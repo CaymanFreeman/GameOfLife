@@ -5,28 +5,10 @@ use rand::{Rng, thread_rng};
 
 #[derive(Clone)]
 pub(crate) enum SurfaceType {
-    FiniteSpheroid,             // Wrapping: left-right & up-down,  Bounds: None
-    FinitePlane,                // Wrapping: None,                  Bounds: left-right & up-down
-    FiniteHorizontalLoop,       // Wrapping: left-right,            Bounds: up-down
-    FiniteVerticalLoop,         // Wrapping: up-down,               Bounds: left-right
-    InfinitePlane,              // Wrapping: None,                  Bounds: None
-    InfiniteVerticalStrip,      // Wrapping: None,                  Bounds: left-right
-    InfiniteHorizontalStrip,    // Wrapping: None,                  Bounds: up-down
-    InfiniteVerticalCylinder,   // Wrapping: left-right,            Bounds: None
-    InfiniteHorizontalCylinder, // Wrapping: up-down,               Bounds: None
-}
-
-impl SurfaceType {
-    fn is_infinite(&self) -> bool {
-        match self {
-            InfinitePlane => { true }
-            InfiniteVerticalStrip => { true }
-            InfiniteHorizontalStrip => { true }
-            InfiniteVerticalCylinder => { true }
-            InfiniteHorizontalCylinder => { true }
-            _ => { false }
-        }
-    }
+    Spheroid,             // Wrapping: left-right & up-down,  Bounds: None
+    Plane,                // Wrapping: None,                  Bounds: left-right & up-down
+    HorizontalLoop,       // Wrapping: left-right,            Bounds: up-down
+    VerticalLoop,         // Wrapping: up-down,               Bounds: left-right
 }
 
 pub(crate) struct Simulation {
@@ -34,13 +16,13 @@ pub(crate) struct Simulation {
     pub(crate) surface_type: SurfaceType,
     pub(crate) rows: i32,
     pub(crate) columns: i32,
-    pub(crate) cell_grid: Vec<Cell>,
+    pub(crate) generation: Vec<Cell>,
     pub(crate) generation_iteration: u128,
 }
 
 impl Simulation {
 
-    pub(crate) fn seed_to_cells(seed: String, columns: i32) -> Result<Vec<Cell>, String> {
+    pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<Vec<Cell>, String> {
         let mut cell_grid = Vec::new();
         let values: Vec<char> = seed.chars().collect();
         for i in 0..values.len() {
@@ -58,7 +40,7 @@ impl Simulation {
         Ok(cell_grid)
     }
 
-    pub(crate) fn random_seed(rows: i32, columns: i32) -> String {
+    pub(crate) fn random_seed_string(rows: i32, columns: i32) -> String {
         let length = rows * columns;
         let mut seed = String::new();
         let mut rng = thread_rng();
@@ -69,9 +51,9 @@ impl Simulation {
         seed
     }
 
-    pub(crate) fn get_seed(&self) -> String { self.seed.clone() }
+    pub(crate) fn get_seed_string(&self) -> String { self.seed.clone() }
 
-    pub(crate) fn get_generation(&self) -> String {
+    pub(crate) fn get_generation_string(&self) -> String {
         let mut current_generation = String::new();
         for row in 0..self.rows {
             for column in 0..self.columns {
@@ -81,7 +63,7 @@ impl Simulation {
         current_generation
     }
 
-    pub(crate) fn print_seed(&self, print_with_grid: Option<bool>) {
+    pub(crate) fn print_seed_generation(&self, print_with_grid: Option<bool>) {
         let print_with_grid = print_with_grid.unwrap_or(false);
         println!("SEED: {}", self.seed);
         if print_with_grid {
@@ -95,7 +77,7 @@ impl Simulation {
         }
     }
 
-    pub(crate) fn print_generation(&self) {
+    pub(crate) fn print_current_generation(&self) {
         if self.generation_iteration == 0 {
             println!("SEED GENERATION");
         } else {
@@ -109,7 +91,7 @@ impl Simulation {
         }
     }
 
-    fn calc_wrap(index: i32, axis_length: i32) -> i32 {
+    fn wrap_index(index: i32, axis_length: i32) -> i32 {
         if index > -1 {
             index % axis_length
         } else {
@@ -133,84 +115,41 @@ impl Simulation {
 
     fn get_cell(&self, row: i32, column: i32) -> Cell {
         match self.surface_type.clone() {
-            FiniteSpheroid => {
-                self.cell_grid.iter()
-                    .nth((Self::calc_wrap(row, self.rows) * self.columns + Self::calc_wrap(column, self.columns)) as usize)
+            Spheroid => {
+                self.generation.iter()
+                    .nth((Self::wrap_index(row, self.rows) * self.columns + Self::wrap_index(column, self.columns)) as usize)
                     .unwrap()
                     .clone()
             }
-            FinitePlane => {
+            Plane => {
                 if self.out_of_bounds_row(row) || self.out_of_bounds_column(column) {
                     Cell::new(Dead, row, column)
                 } else {
-                    self.cell_grid.iter()
+                    self.generation.iter()
                         .nth((row * self.columns + column) as usize)
                         .unwrap()
                         .clone()
                 }
             }
-            FiniteHorizontalLoop => {
+            HorizontalLoop => {
                 if self.out_of_bounds_row(row) {
                     Cell::new(Dead, row, column)
                 } else {
-                    self.cell_grid.iter()
-                        .nth((row * self.columns + Self::calc_wrap(column, self.columns)) as usize)
+                    self.generation.iter()
+                        .nth((row * self.columns + Self::wrap_index(column, self.columns)) as usize)
                         .unwrap()
                         .clone()
                 }
             }
-            FiniteVerticalLoop => {
+            VerticalLoop => {
                 if self.out_of_bounds_column(column) {
                     Cell::new(Dead, row, column)
                 } else {
-                    self.cell_grid.iter()
-                        .nth((Self::calc_wrap(row, self.rows) * self.columns + column) as usize)
+                    self.generation.iter()
+                        .nth((Self::wrap_index(row, self.rows) * self.columns + column) as usize)
                         .unwrap()
                         .clone()
                 }
-            }
-            InfinitePlane => {
-                // Does not provide "infiniteness"
-                self.cell_grid.iter()
-                    .nth((row * self.columns + column) as usize)
-                    .unwrap()
-                    .clone()
-            }
-            InfiniteVerticalStrip => {
-                // Does not provide "infiniteness"
-                if self.out_of_bounds_column(column) {
-                    Cell::new(Dead, row, column)
-                } else {
-                    self.cell_grid.iter()
-                        .nth((row * self.columns + column) as usize)
-                        .unwrap()
-                        .clone()
-                }
-            }
-            InfiniteHorizontalStrip => {
-                // Does not provide "infiniteness"
-                if self.out_of_bounds_row(row) {
-                    Cell::new(Dead, row, column)
-                } else {
-                    self.cell_grid.iter()
-                        .nth((row * self.columns + column) as usize)
-                        .unwrap()
-                        .clone()
-                }
-            }
-            InfiniteVerticalCylinder => {
-                // Does not provide "infiniteness"
-                self.cell_grid.iter()
-                    .nth((row * self.columns + Self::calc_wrap(column, self.columns)) as usize)
-                    .unwrap()
-                    .clone()
-            }
-            InfiniteHorizontalCylinder => {
-                // Does not provide "infiniteness"
-                self.cell_grid.iter()
-                    .nth((Self::calc_wrap(row, self.rows) * self.columns + column) as usize)
-                    .unwrap()
-                    .clone()
             }
         }
     }
@@ -234,7 +173,7 @@ impl Simulation {
             return
         }
         for _ in 0..iterations {
-            let mut new_generation_grid: Vec<Cell> = self.cell_grid.clone();
+            let mut new_generation_grid: Vec<Cell> = self.generation.clone();
             for row in 0..self.rows {
                 for col in 0..self.columns {
                     let alive_neighbors = self.get_alive_neighbors(row, col);
@@ -252,7 +191,7 @@ impl Simulation {
                     }
                 }
             }
-            self.cell_grid = new_generation_grid.into_iter().collect();
+            self.generation = new_generation_grid.into_iter().collect();
             self.generation_iteration += 1;
         }
     }
@@ -272,7 +211,7 @@ impl Simulation {
             surface_type: self.surface_type.clone(),
             rows: self.rows,
             columns: self.columns,
-            cell_grid: self.cell_grid.clone(),
+            generation: self.generation.clone(),
             generation_iteration: self.generation_iteration,
         }
     }
@@ -283,7 +222,7 @@ impl Simulation {
             surface_type: simulation.surface_type.clone(),
             rows: simulation.rows,
             columns: simulation.columns,
-            cell_grid: simulation.cell_grid.clone(),
+            generation: simulation.generation.clone(),
             generation_iteration: simulation.generation_iteration,
         }
     }
@@ -294,7 +233,7 @@ impl Simulation {
             surface_type: simulation.surface_type.clone(),
             rows: simulation.rows,
             columns: simulation.columns,
-            cell_grid: Simulation::seed_to_cells(simulation.seed.clone(), simulation.columns).unwrap(),
+            generation: Simulation::seed_string_to_generation(simulation.seed.clone(), simulation.columns).unwrap(),
             generation_iteration: 0,
         }
     }
@@ -334,11 +273,11 @@ impl Simulation {
             }
         } else {
             if rows_parameter.is_some() && columns_parameter.is_some() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed(rows, columns));
+                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(rows, columns));
             } else if rows_parameter.is_some() && columns_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed(rows, rows));
+                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(rows, rows));
             } else if columns_parameter.is_some() && rows_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed(columns, columns));
+                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(columns, columns));
             } else if rows_parameter.is_none() && columns_parameter.is_none() {
                 return Err("One of the following must be provided: rows, columns, or seed".to_string())
             }
@@ -348,30 +287,18 @@ impl Simulation {
             surface_type,
             rows,
             columns,
-            cell_grid: Simulation::seed_to_cells(calculated_seed.clone(), columns).unwrap(),
+            generation: Simulation::seed_string_to_generation(calculated_seed.clone(), columns).unwrap(),
             generation_iteration: 0,
         })
     }
 
-    pub(crate) fn new_finite_spheroid(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), FiniteSpheroid, Some(seed)).unwrap() }
-    pub(crate) fn new_finite_plane(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), FinitePlane, Some(seed)).unwrap() }
-    pub(crate) fn new_finite_horizontal_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), FiniteHorizontalLoop, Some(seed)).unwrap() }
-    pub(crate) fn new_finite_vertical_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), FiniteVerticalLoop, Some(seed)).unwrap() }
+    pub(crate) fn new_spheroid(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Spheroid, Some(seed)).unwrap() }
+    pub(crate) fn new_plane(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Plane, Some(seed)).unwrap() }
+    pub(crate) fn new_horizontal_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), HorizontalLoop, Some(seed)).unwrap() }
+    pub(crate) fn new_vertical_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), VerticalLoop, Some(seed)).unwrap() }
 
-    pub(crate) fn new_finite_spheroid_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), FiniteSpheroid, None).unwrap() }
-    pub(crate) fn new_finite_plane_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), FinitePlane, None).unwrap() }
-    pub(crate) fn new_finite_horizontal_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), FiniteHorizontalLoop, None).unwrap() }
-    pub(crate) fn new_finite_vertical_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), FiniteVerticalLoop, None).unwrap() }
-
-    pub(crate) fn new_infinite_plane(seed: String) -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, Some(seed)).unwrap() }
-    pub(crate) fn new_infinite_vertical_cylinder(seed: String) -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, Some(seed)).unwrap() }
-    pub(crate) fn new_infinite_horizontal_cylinder(seed: String) -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, Some(seed)).unwrap() }
-    pub(crate) fn new_infinite_vertical_strip(columns: i32, seed: String) -> Simulation { Self::new(None, Some(columns), InfiniteVerticalStrip, Some(seed)).unwrap() }
-    pub(crate) fn new_infinite_horizontal_strip(rows: i32, seed: String) -> Simulation { Self::new(Some(rows), None, InfiniteHorizontalStrip, Some(seed)).unwrap() }
-
-    pub(crate) fn new_infinite_plane_rand() -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, None).unwrap() }
-    pub(crate) fn new_infinite_vertical_cylinder_rand() -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, None).unwrap() }
-    pub(crate) fn new_infinite_horizontal_cylinder_rand() -> Simulation { Self::new(Some(11), Some(11), InfinitePlane, None).unwrap() }
-    pub(crate) fn new_infinite_vertical_strip_rand(columns: i32) -> Simulation { Self::new(None, Some(columns), InfiniteVerticalStrip, None).unwrap() }
-    pub(crate) fn new_infinite_horizontal_strip_rand(rows: i32) -> Simulation { Self::new(Some(rows), None, InfiniteHorizontalStrip, None).unwrap() }
+    pub(crate) fn new_spheroid_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Spheroid, None).unwrap() }
+    pub(crate) fn new_plane_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Plane, None).unwrap() }
+    pub(crate) fn new_horizontal_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), HorizontalLoop, None).unwrap() }
+    pub(crate) fn new_vertical_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), VerticalLoop, None).unwrap() }
 }

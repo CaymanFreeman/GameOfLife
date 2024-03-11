@@ -9,8 +9,8 @@ pub(crate) enum CellState {
 #[derive(Clone)]
 pub(crate) struct Cell {
     pub(crate) state: CellState,
-    row: i32,
-    column: i32,
+    pub(crate) row: i32,
+    pub(crate) column: i32,
 }
 
 pub(crate) const ALIVE_DISPLAY: char = '*';
