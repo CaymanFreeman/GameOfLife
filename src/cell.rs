@@ -1,12 +1,12 @@
 use crate::cell::CellState::*;
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum CellState {
     Dead,
     Alive,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) struct Cell {
     pub(crate) state: CellState,
     pub(crate) row: i32,
@@ -42,11 +42,13 @@ impl Cell {
         }
     }
 
-    pub(crate) fn new(state: CellState, row: i32, column: i32) -> Cell {
-        return Cell {
+    pub(crate) fn new(state: CellState, row: i32, column: i32) -> Result<Cell, String> {
+        Ok(Cell {
             state,
             row,
             column
-        }
+        })
     }
+
+    pub(crate) fn new_alive(row: i32, column: i32) -> Cell { Self::new(Alive, row, column).unwrap() }
 }

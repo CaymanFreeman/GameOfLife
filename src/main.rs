@@ -1,9 +1,10 @@
 mod simulation;
 mod cell;
-mod test_cases;
+mod testing;
 
-use crate::test_cases::{test};
+use crate::testing::{test_printing, test_surfaces};
 
 fn main() {
-    test();
+    test_surfaces();
+    test_printing();
 }

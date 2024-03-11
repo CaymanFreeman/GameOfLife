@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::cell::Cell;
 use crate::cell::CellState::{Alive, Dead};
 use crate::simulation::SurfaceType::*;
@@ -16,28 +17,29 @@ pub(crate) struct Simulation {
     pub(crate) surface_type: SurfaceType,
     pub(crate) rows: i32,
     pub(crate) columns: i32,
-    pub(crate) generation: Vec<Cell>,
-    pub(crate) generation_iteration: u128,
+    pub(crate) generation: HashSet<Cell>,
+    pub(crate) generation_iteration: u64,
 }
 
 impl Simulation {
 
-    pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<Vec<Cell>, String> {
-        let mut cell_grid = Vec::new();
+    pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<HashSet<Cell>, String> {
+        let mut generation = HashSet::new();
         let values: Vec<char> = seed.chars().collect();
         for i in 0..values.len() {
             let index = i as i32;
             let row_index = index / columns;
             let column_index = index % columns;
             let value = values.get(i).unwrap().clone();
-            let cell = match value {
-                '1' => Ok(Cell::new(Alive, row_index, column_index)),
-                '0' => Ok(Cell::new(Dead, row_index, column_index)),
-                _ => Err(format!("Invalid value (not 1 or 0) in seed: {}", value)),
-            }.unwrap();
-            cell_grid.push(cell)
+            match value {
+                '1' => {
+                    generation.insert(Cell::new_alive(row_index, column_index));
+                },
+                '0' => {},
+                _ => return Err(format!("Unexpected seed character: {}", value)),
+            };
         }
-        Ok(cell_grid)
+        Ok(generation)
     }
 
     pub(crate) fn random_seed_string(rows: i32, columns: i32) -> String {
@@ -67,7 +69,7 @@ impl Simulation {
         let print_with_grid = print_with_grid.unwrap_or(false);
         println!("SEED: {}", self.seed);
         if print_with_grid {
-            let first_iteration = Self::from_as_first(self);
+            let first_iteration = Self::from_seed_generation(self);
             for row in 0..first_iteration.rows {
                 for column in 0..first_iteration.columns {
                     print!("{}", first_iteration.get_cell(row, column).to_display())
@@ -114,44 +116,34 @@ impl Simulation {
     }
 
     fn get_cell(&self, row: i32, column: i32) -> Cell {
+        let mut cell = Cell::new_alive(row, column);
         match self.surface_type.clone() {
             Spheroid => {
-                self.generation.iter()
-                    .nth((Self::wrap_index(row, self.rows) * self.columns + Self::wrap_index(column, self.columns)) as usize)
-                    .unwrap()
-                    .clone()
+                cell.row = Self::wrap_index(row, self.rows);
+                cell.column = Self::wrap_index(column, self.columns);
+                if !self.generation.contains(&cell) {
+                    cell.state = Dead;
+                }
             }
             Plane => {
-                if self.out_of_bounds_row(row) || self.out_of_bounds_column(column) {
-                    Cell::new(Dead, row, column)
-                } else {
-                    self.generation.iter()
-                        .nth((row * self.columns + column) as usize)
-                        .unwrap()
-                        .clone()
+                if self.out_of_bounds_row(row) || self.out_of_bounds_column(column) || !self.generation.contains(&cell) {
+                    cell.state = Dead;
                 }
             }
             HorizontalLoop => {
-                if self.out_of_bounds_row(row) {
-                    Cell::new(Dead, row, column)
-                } else {
-                    self.generation.iter()
-                        .nth((row * self.columns + Self::wrap_index(column, self.columns)) as usize)
-                        .unwrap()
-                        .clone()
+                cell.column = Self::wrap_index(column, self.columns);
+                if self.out_of_bounds_row(row) || !self.generation.contains(&cell) {
+                    cell.state = Dead;
                 }
             }
             VerticalLoop => {
-                if self.out_of_bounds_column(column) {
-                    Cell::new(Dead, row, column)
-                } else {
-                    self.generation.iter()
-                        .nth((Self::wrap_index(row, self.rows) * self.columns + column) as usize)
-                        .unwrap()
-                        .clone()
+                cell.row = Self::wrap_index(row, self.rows);
+                if self.out_of_bounds_column(column) || !self.generation.contains(&cell) {
+                    cell.state = Dead;
                 }
             }
         }
+        return cell
     }
 
     fn get_alive_neighbors(&self, row: i32, column: i32) -> u8 {
@@ -173,25 +165,25 @@ impl Simulation {
             return
         }
         for _ in 0..iterations {
-            let mut new_generation_grid: Vec<Cell> = self.generation.clone();
+            let mut new_generation = self.generation.clone();
             for row in 0..self.rows {
-                for col in 0..self.columns {
-                    let alive_neighbors = self.get_alive_neighbors(row, col);
-                    let cell_index = (row * self.columns + col) as usize;
-                    let cell = self.get_cell(row, col);
+                for column in 0..self.columns {
+                    let mut cell = self.get_cell(row, column);
+                    let alive_neighbors = self.get_alive_neighbors(row, column);
                     let cell_alive = cell.is_alive();
                     if cell_alive {
                         if alive_neighbors < 2 || alive_neighbors > 3 {
-                            new_generation_grid[cell_index].state = Dead
+                            new_generation.remove(&cell);
                         }
-                    } else if !cell_alive {
+                    } else {
                         if alive_neighbors == 3 {
-                            new_generation_grid[cell_index].state = Alive
+                            cell.state = Alive;
+                            new_generation.insert(cell);
                         }
                     }
                 }
             }
-            self.generation = new_generation_grid.into_iter().collect();
+            self.generation = new_generation;
             self.generation_iteration += 1;
         }
     }
@@ -216,18 +208,7 @@ impl Simulation {
         }
     }
 
-    pub(crate) fn from(simulation: &Simulation) -> Simulation {
-        Simulation {
-            seed: simulation.seed.clone(),
-            surface_type: simulation.surface_type.clone(),
-            rows: simulation.rows,
-            columns: simulation.columns,
-            generation: simulation.generation.clone(),
-            generation_iteration: simulation.generation_iteration,
-        }
-    }
-
-    pub(crate) fn from_as_first(simulation: &Simulation) -> Simulation {
+    pub(crate) fn from_seed_generation(simulation: &Simulation) -> Simulation {
         Simulation {
             seed: simulation.seed.clone(),
             surface_type: simulation.surface_type.clone(),
