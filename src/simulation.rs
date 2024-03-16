@@ -1,15 +1,15 @@
 use std::collections::HashSet;
 use crate::cell::Cell;
 use crate::cell::CellState::{Alive, Dead};
+use crate::seeds::{random_seed_string, seed_string_to_generation};
 use crate::simulation::SurfaceType::*;
-use rand::{Rng, thread_rng};
 
 #[derive(Clone)]
 pub(crate) enum SurfaceType {
-    Spheroid,             // Wrapping: left-right & up-down,  Bounds: None
-    Plane,                // Wrapping: None,                  Bounds: left-right & up-down
-    HorizontalLoop,       // Wrapping: left-right,            Bounds: up-down
-    VerticalLoop,         // Wrapping: up-down,               Bounds: left-right
+    Ball,            // Wrapping: left-right & up-down,  Bounds: None
+    HorizontalLoop,  // Wrapping: left-right,            Bounds: up-down
+    VerticalLoop,    // Wrapping: up-down,               Bounds: left-right
+    Rectangle,       // Wrapping: None,                  Bounds: left-right & up-down
 }
 
 pub(crate) struct Simulation {
@@ -18,40 +18,10 @@ pub(crate) struct Simulation {
     pub(crate) rows: i32,
     pub(crate) columns: i32,
     pub(crate) generation: HashSet<Cell>,
-    pub(crate) generation_iteration: u64,
+    pub(crate) generation_iteration: u128,
 }
 
 impl Simulation {
-
-    pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<HashSet<Cell>, String> {
-        let mut generation = HashSet::new();
-        let values: Vec<char> = seed.chars().collect();
-        for i in 0..values.len() {
-            let index = i as i32;
-            let row_index = index / columns;
-            let column_index = index % columns;
-            let value = values.get(i).unwrap().clone();
-            match value {
-                '1' => {
-                    generation.insert(Cell::new_alive(row_index, column_index));
-                },
-                '0' => {},
-                _ => return Err(format!("Unexpected seed character: {}", value)),
-            };
-        }
-        Ok(generation)
-    }
-
-    pub(crate) fn random_seed_string(rows: i32, columns: i32) -> String {
-        let length = rows * columns;
-        let mut seed = String::new();
-        let mut rng = thread_rng();
-        for _ in 0..length {
-            let random_number = rng.gen_range('0'..='1');
-            seed.push(random_number);
-        }
-        seed
-    }
 
     pub(crate) fn get_seed_string(&self) -> String { self.seed.clone() }
 
@@ -94,11 +64,11 @@ impl Simulation {
     }
 
     fn wrap_index(index: i32, axis_length: i32) -> i32 {
-        if index > -1 {
-            index % axis_length
-        } else {
-            axis_length - (index % axis_length).abs()
+        let mut wrapped_index = index % axis_length;
+        if wrapped_index < 0 {
+            wrapped_index += axis_length;
         }
+        wrapped_index
     }
 
     fn out_of_bounds_row(&self, index: i32) -> bool {
@@ -118,14 +88,14 @@ impl Simulation {
     fn get_cell(&self, row: i32, column: i32) -> Cell {
         let mut cell = Cell::new_alive(row, column);
         match self.surface_type.clone() {
-            Spheroid => {
+            Ball => {
                 cell.row = Self::wrap_index(row, self.rows);
                 cell.column = Self::wrap_index(column, self.columns);
                 if !self.generation.contains(&cell) {
                     cell.state = Dead;
                 }
             }
-            Plane => {
+            Rectangle => {
                 if self.out_of_bounds_row(row) || self.out_of_bounds_column(column) || !self.generation.contains(&cell) {
                     cell.state = Dead;
                 }
@@ -214,7 +184,7 @@ impl Simulation {
             surface_type: simulation.surface_type.clone(),
             rows: simulation.rows,
             columns: simulation.columns,
-            generation: Simulation::seed_string_to_generation(simulation.seed.clone(), simulation.columns).unwrap(),
+            generation: seed_string_to_generation(simulation.seed.clone(), simulation.columns).unwrap(),
             generation_iteration: 0,
         }
     }
@@ -254,11 +224,11 @@ impl Simulation {
             }
         } else {
             if rows_parameter.is_some() && columns_parameter.is_some() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(rows, columns));
+                calculated_seed = seed.unwrap_or(random_seed_string(rows, columns));
             } else if rows_parameter.is_some() && columns_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(rows, rows));
+                calculated_seed = seed.unwrap_or(random_seed_string(rows, rows));
             } else if columns_parameter.is_some() && rows_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(Simulation::random_seed_string(columns, columns));
+                calculated_seed = seed.unwrap_or(random_seed_string(columns, columns));
             } else if rows_parameter.is_none() && columns_parameter.is_none() {
                 return Err("One of the following must be provided: rows, columns, or seed".to_string())
             }
@@ -268,18 +238,18 @@ impl Simulation {
             surface_type,
             rows,
             columns,
-            generation: Simulation::seed_string_to_generation(calculated_seed.clone(), columns).unwrap(),
+            generation: seed_string_to_generation(calculated_seed.clone(), columns).unwrap(),
             generation_iteration: 0,
         })
     }
 
-    pub(crate) fn new_spheroid(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Spheroid, Some(seed)).unwrap() }
-    pub(crate) fn new_plane(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Plane, Some(seed)).unwrap() }
+    pub(crate) fn new_spheroid(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Ball, Some(seed)).unwrap() }
+    pub(crate) fn new_plane(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), Rectangle, Some(seed)).unwrap() }
     pub(crate) fn new_horizontal_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), HorizontalLoop, Some(seed)).unwrap() }
     pub(crate) fn new_vertical_loop(rows: i32, columns: i32, seed: String) -> Simulation { Self::new(Some(rows), Some(columns), VerticalLoop, Some(seed)).unwrap() }
 
-    pub(crate) fn new_spheroid_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Spheroid, None).unwrap() }
-    pub(crate) fn new_plane_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Plane, None).unwrap() }
+    pub(crate) fn new_spheroid_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Ball, None).unwrap() }
+    pub(crate) fn new_plane_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), Rectangle, None).unwrap() }
     pub(crate) fn new_horizontal_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), HorizontalLoop, None).unwrap() }
     pub(crate) fn new_vertical_loop_rand(rows: i32, columns: i32) -> Simulation { Self::new(Some(rows), Some(columns), VerticalLoop, None).unwrap() }
 }
