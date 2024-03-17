@@ -3,9 +3,9 @@ mod cell;
 mod testing;
 mod seeds;
 
-use crate::testing::{test_printing, test_surfaces};
+use crate::testing::*;
 
 fn main() {
-    test_surfaces();
+    test_surface_behavior();
     test_printing();
 }

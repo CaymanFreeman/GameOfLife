@@ -1,71 +1,48 @@
 use crate::simulation::Simulation;
 
-fn pass_or_fail(pass: bool) -> &'static str {
-    return if pass {
-        "PASSED"
-    } else {
-        "FAILED"
+fn passed_or_failed(pass: bool) -> &'static str {
+    if pass { "PASSED" } else { "FAILED" }
+}
+
+pub(crate) fn print_side_by_side(left_grid: String, left_grid_title: &str, right_grid: String, right_grid_title: &str, rows: i32, columns: i32) {
+    println!();
+    let full_print_width = 2 * columns + 3;
+    let title_spaces = (full_print_width - left_grid_title.len() as i32 - right_grid_title.len() as i32) as usize;
+    println!("{}{}{}", left_grid_title, " ".repeat(title_spaces - 1), right_grid_title);
+    for row in 0..rows {
+        let start = (row * columns) as usize;
+        let end = start + columns as usize;
+        println!("{}   {}", &left_grid[start..end], &right_grid[start..end]);
     }
+    println!();
 }
 
 pub(crate) fn test_printing() {
-
     println!("~~~TESTING PRINTING~~~");
-    println!();
-
     let simulation_size = 15;
     let generation_iterations = 3;
 
-    test_plane_printing(simulation_size, generation_iterations);
-    println!();
-    test_spheroid_printing(simulation_size, generation_iterations);
-    println!();
-    test_vertical_loop_printing(simulation_size, generation_iterations);
-    println!();
-    test_horizontal_loop_printing(simulation_size, generation_iterations);
+    test_surface_printing(simulation_size, generation_iterations, Simulation::new_plane_rand, "Plane");
+    test_surface_printing(simulation_size, generation_iterations, Simulation::new_spheroid_rand, "Spheroid");
+    test_surface_printing(simulation_size, generation_iterations, Simulation::new_vertical_loop_rand, "Vertical Loop");
+    test_surface_printing(simulation_size, generation_iterations, Simulation::new_horizontal_loop_rand, "Horizontal Loop");
 }
 
-pub(crate) fn test_plane_printing(simulation_size: i32, generation_iterations: u128) {
-    println!("Testing Plane:");
-    let mut plane = Simulation::new_plane_rand(simulation_size, simulation_size);
-    plane.print_seed_generation(Some(true));
+fn test_surface_printing<F>(simulation_size: i32, generation_iterations: u128, new_simulation: F, surface_name: &str)
+    where
+        F: Fn(i32, i32) -> Simulation,
+{
+    println!("Testing {}:", surface_name);
+    let mut simulation = new_simulation(simulation_size, simulation_size);
+    simulation.print_seed_generation(Some(true));
     println!();
-    plane.simulate_generations(generation_iterations);
-    plane.print_current_generation();
+    simulation.simulate_generations(generation_iterations);
+    simulation.print_current_generation();
+    println!();
 }
 
-pub(crate) fn test_spheroid_printing(simulation_size: i32, generation_iterations: u128) {
-    println!("Testing Spheroid:");
-    let mut spheroid = Simulation::new_spheroid_rand(simulation_size, simulation_size);
-    spheroid.print_seed_generation(Some(true));
-    println!();
-    spheroid.simulate_generations(generation_iterations);
-    spheroid.print_current_generation();
-}
-
-pub(crate) fn test_vertical_loop_printing(simulation_size: i32, generation_iterations: u128) {
-    println!("Testing Vertical Loop:");
-    let mut vertical_loop = Simulation::new_vertical_loop_rand(simulation_size, simulation_size);
-    vertical_loop.print_seed_generation(Some(true));
-    println!();
-    vertical_loop.simulate_generations(generation_iterations);
-    vertical_loop.print_current_generation();
-}
-
-pub(crate) fn test_horizontal_loop_printing(simulation_size: i32, generation_iterations: u128) {
-    println!("Testing Horizontal Loop:");
-    let mut horizontal_loop = Simulation::new_horizontal_loop_rand(simulation_size, simulation_size);
-    horizontal_loop.print_seed_generation(Some(true));
-    println!();
-    horizontal_loop.simulate_generations(generation_iterations);
-    horizontal_loop.print_current_generation();
-}
-
-pub(crate) fn test_surfaces() {
-
-    println!("~~~TESTING SURFACES~~~");
-    println!();
-
+pub(crate) fn test_surface_behavior() {
+    println!("~~~TESTING SURFACE BEHAVIOR~~~");
     let simulation_size = 9;
     let generation_iterations = 15;
 
@@ -84,140 +61,52 @@ pub(crate) fn test_surfaces() {
     let left_spaceship_wrapped = "000000000000000000000001100000011110000110110000011000000000000000000000000000000";
     let right_spaceship_wrapped = "000000000000000000001100000011110000011011000000110000000000000000000000000000000";
 
-    test_plane_surface(simulation_size, generation_iterations,
-                       up_seed, up_spaceship_crashed,
-                       down_seed, down_spaceship_crashed,
-                       left_seed, left_spaceship_crashed,
-                       right_seed, right_spaceship_crashed);
-    test_spheroid_surface(simulation_size, generation_iterations,
-                          up_seed, up_spaceship_wrapped,
-                          down_seed, down_spaceship_wrapped,
-                          left_seed, left_spaceship_wrapped,
-                          right_seed, right_spaceship_wrapped);
-    test_vertical_loop_surface(simulation_size, generation_iterations,
-                               up_seed, up_spaceship_wrapped,
-                               down_seed, down_spaceship_wrapped,
-                               left_seed, left_spaceship_crashed,
-                               right_seed, right_spaceship_crashed);
-    test_horizontal_loop_surface(simulation_size, generation_iterations,
-                                 up_seed, up_spaceship_crashed,
-                                 down_seed, down_spaceship_crashed,
-                                 left_seed, left_spaceship_wrapped,
-                                 right_seed, right_spaceship_wrapped);
+    test_surface(simulation_size, generation_iterations, Simulation::new_plane, "Plane",
+                 up_seed, up_spaceship_crashed,
+                 down_seed, down_spaceship_crashed,
+                 left_seed, left_spaceship_crashed,
+                 right_seed, right_spaceship_crashed);
+    test_surface(simulation_size, generation_iterations, Simulation::new_spheroid, "Spheroid",
+                 up_seed, up_spaceship_wrapped,
+                 down_seed, down_spaceship_wrapped,
+                 left_seed, left_spaceship_wrapped,
+                 right_seed, right_spaceship_wrapped);
+    test_surface(simulation_size, generation_iterations, Simulation::new_vertical_loop, "Vertical Loop",
+                 up_seed, up_spaceship_wrapped,
+                 down_seed, down_spaceship_wrapped,
+                 left_seed, left_spaceship_crashed,
+                 right_seed, right_spaceship_crashed);
+    test_surface(simulation_size, generation_iterations, Simulation::new_horizontal_loop, "Horizontal Loop",
+                 up_seed, up_spaceship_crashed,
+                 down_seed, down_spaceship_crashed,
+                 left_seed, left_spaceship_wrapped,
+                 right_seed, right_spaceship_wrapped);
 }
 
-pub(crate) fn test_plane_surface(simulation_size: i32, generation_iterations: u128,
-                                 up_seed: &str, up_result: &str,
-                                 down_seed: &str, down_result: &str,
-                                 left_seed: &str, left_result: &str,
-                                 right_seed: &str, right_result: &str) {
-    println!("Testing Plane:");
+fn test_surface<F>(simulation_size: i32, generation_iterations: u128, new_simulation: F, surface_name: &str,
+                   up_seed: &str, up_result: &str,
+                   down_seed: &str, down_result: &str,
+                   left_seed: &str, left_result: &str,
+                   right_seed: &str, right_result: &str)
+    where
+        F: Fn(i32, i32, String) -> Simulation,
+{
+    println!("Testing {}:", surface_name);
 
-    print!("Up Spaceship Crashes: ");
-    let mut up_spaceship_simulation = Simulation::new_plane(simulation_size, simulation_size, up_seed.to_string());
-    up_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(up_spaceship_simulation.get_generation_string() == up_result));
+    let test_case = |seed: &str, expected: &str, direction: &str| {
+        print!("{} Spaceship: ", direction);
+        let mut simulation = new_simulation(simulation_size, simulation_size, seed.to_string());
+        simulation.simulate_generations(generation_iterations);
+        let simulation_is_expected = simulation.get_generation_string() == expected;
+        println!("{}", passed_or_failed(simulation_is_expected));
+        if !simulation_is_expected {
+            print_side_by_side(simulation.get_generation_string(), "RESULT", String::from(expected), "EXPECTED", simulation.rows, simulation.columns);
+        }
+    };
 
-    print!("Down Spaceship Crashes: ");
-    let mut down_spaceship_simulation = Simulation::new_plane(simulation_size, simulation_size, down_seed.to_string());
-    down_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(down_spaceship_simulation.get_generation_string() == down_result));
-
-    print!("Left Spaceship Crashes: ");
-    let mut left_spaceship_simulation = Simulation::new_plane(simulation_size, simulation_size, left_seed.to_string());
-    left_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(left_spaceship_simulation.get_generation_string() == left_result));
-
-    print!("Right Spaceship Crashes: ");
-    let mut right_spaceship_simulation = Simulation::new_plane(simulation_size, simulation_size, right_seed.to_string());
-    right_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(right_spaceship_simulation.get_generation_string() == right_result));
-    println!()
-}
-
-pub(crate) fn test_spheroid_surface(simulation_size: i32, generation_iterations: u128,
-                                    up_seed: &str, up_result: &str,
-                                    down_seed: &str, down_result: &str,
-                                    left_seed: &str, left_result: &str,
-                                    right_seed: &str, right_result: &str) {
-    println!("Testing Spheroid:");
-
-    print!("Up Spaceship Wraps: ");
-    let mut up_spaceship_simulation = Simulation::new_spheroid(simulation_size, simulation_size, up_seed.to_string());
-    up_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(up_spaceship_simulation.get_generation_string() == up_result));
-
-    print!("Down Spaceship Wraps: ");
-    let mut down_spaceship_simulation = Simulation::new_spheroid(simulation_size, simulation_size, down_seed.to_string());
-    down_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(down_spaceship_simulation.get_generation_string() == down_result));
-
-    print!("Left Spaceship Wraps: ");
-    let mut left_spaceship_simulation = Simulation::new_spheroid(simulation_size, simulation_size, left_seed.to_string());
-    left_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(left_spaceship_simulation.get_generation_string() == left_result));
-
-    print!("Right Spaceship Wraps: ");
-    let mut right_spaceship_simulation = Simulation::new_spheroid(simulation_size, simulation_size, right_seed.to_string());
-    right_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(right_spaceship_simulation.get_generation_string() == right_result));
-    println!()
-}
-
-pub(crate) fn test_vertical_loop_surface(simulation_size: i32, generation_iterations: u128,
-                                         up_seed: &str, up_result: &str,
-                                         down_seed: &str, down_result: &str,
-                                         left_seed: &str, left_result: &str,
-                                         right_seed: &str, right_result: &str) {
-    println!("Testing Vertical Loop:");
-
-    print!("Up Spaceship Wraps: ");
-    let mut up_spaceship_simulation = Simulation::new_vertical_loop(simulation_size, simulation_size, up_seed.to_string());
-    up_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(up_spaceship_simulation.get_generation_string() == up_result));
-
-    print!("Down Spaceship Wraps: ");
-    let mut down_spaceship_simulation = Simulation::new_vertical_loop(simulation_size, simulation_size, down_seed.to_string());
-    down_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(down_spaceship_simulation.get_generation_string() == down_result));
-
-    print!("Left Spaceship Crashes: ");
-    let mut left_spaceship_simulation = Simulation::new_vertical_loop(simulation_size, simulation_size, left_seed.to_string());
-    left_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(left_spaceship_simulation.get_generation_string() == left_result));
-
-    print!("Right Spaceship Crashes: ");
-    let mut right_spaceship_simulation = Simulation::new_vertical_loop(simulation_size, simulation_size, right_seed.to_string());
-    right_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(right_spaceship_simulation.get_generation_string() == right_result));
-    println!()
-}
-
-pub(crate) fn test_horizontal_loop_surface(simulation_size: i32, generation_iterations: u128,
-                                           up_seed: &str, up_result: &str,
-                                           down_seed: &str, down_result: &str,
-                                           left_seed: &str, left_result: &str,
-                                           right_seed: &str, right_result: &str) {
-    println!("Testing Horizontal Loop:");
-
-    print!("Up Spaceship Crashes: ");
-    let mut up_spaceship_simulation = Simulation::new_horizontal_loop(simulation_size, simulation_size, up_seed.to_string());
-    up_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(up_spaceship_simulation.get_generation_string() == up_result));
-
-    print!("Down Spaceship Crashes: ");
-    let mut down_spaceship_simulation = Simulation::new_horizontal_loop(simulation_size, simulation_size, down_seed.to_string());
-    down_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(down_spaceship_simulation.get_generation_string() == down_result));
-
-    print!("Left Spaceship Wraps: ");
-    let mut left_spaceship_simulation = Simulation::new_horizontal_loop(simulation_size, simulation_size, left_seed.to_string());
-    left_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(left_spaceship_simulation.get_generation_string() == left_result));
-
-    print!("Right Spaceship Wraps: ");
-    let mut right_spaceship_simulation = Simulation::new_horizontal_loop(simulation_size, simulation_size, right_seed.to_string());
-    right_spaceship_simulation.simulate_generations(generation_iterations);
-    println!("{}", pass_or_fail(right_spaceship_simulation.get_generation_string() == right_result));
-    println!()
+    test_case(up_seed, up_result, "Up");
+    test_case(down_seed, down_result, "Down");
+    test_case(left_seed, left_result, "Left");
+    test_case(right_seed, right_result, "Right");
+    println!();
 }
