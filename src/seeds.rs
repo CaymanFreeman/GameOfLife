@@ -1,14 +1,16 @@
 use std::collections::HashSet;
+use std::hash::Hash;
+use num_traits::{FromPrimitive, Unsigned};
 use crate::cell::Cell;
 use rand::{Rng, thread_rng};
 
-pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<HashSet<Cell>, String> {
+pub fn seed_string_to_generation<U: Unsigned + Clone + Eq + Hash + FromPrimitive>(seed: String, columns: U) -> Result<HashSet<Cell<U>>, String> {
     let mut generation = HashSet::new();
     let values: Vec<char> = seed.chars().collect();
     for i in 0..values.len() {
-        let index = i as i32;
-        let row_index = index / columns;
-        let column_index = index % columns;
+        let index = U::from_usize(i).unwrap();
+        let row_index = index.clone() / columns.clone();
+        let column_index = index % columns.clone();
         let value = values.get(i).unwrap().clone();
         match value {
             '1' => {
@@ -21,13 +23,15 @@ pub(crate) fn seed_string_to_generation(seed: String, columns: i32) -> Result<Ha
     Ok(generation)
 }
 
-pub(crate) fn random_seed_string(rows: i32, columns: i32) -> String {
+pub fn random_seed_string<U: Unsigned + PartialOrd>(rows: U, columns: U) -> String {
     let length = rows * columns;
     let mut seed = String::new();
     let mut rng = thread_rng();
-    for _ in 0..length {
+    let mut i = U::zero();
+    while i < length {
         let random_number = rng.gen_range('0'..='1');
         seed.push(random_number);
+        i = i + U::one();
     }
     seed
 }

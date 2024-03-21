@@ -1,48 +1,50 @@
+use std::hash::Hash;
+use num_traits::Unsigned;
 use crate::cell::CellState::*;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub(crate) enum CellState {
+pub enum CellState {
     Dead,
     Alive,
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub(crate) struct Cell {
-    pub(crate) state: CellState,
-    pub(crate) row: i32,
-    pub(crate) column: i32,
+pub struct Cell<U: Unsigned + Eq + Hash> {
+    pub state: CellState,
+    pub row: U,
+    pub column: U,
 }
 
-pub(crate) const ALIVE_DISPLAY: char = '*';
-pub(crate) const DEAD_DISPLAY: char = '-';
+pub const ALIVE_DISPLAY: char = '*';
+pub const DEAD_DISPLAY: char = '-';
 
-pub(crate) const ALIVE_SEED_VALUE: char = '1';
-pub(crate) const DEAD_SEED_VALUE: char = '0';
+pub const ALIVE_SEED_VALUE: char = '1';
+pub const DEAD_SEED_VALUE: char = '0';
 
-impl Cell {
+impl<U: Unsigned + Eq + Hash> Cell<U> {
 
-    pub(crate) fn is_alive(&self) -> bool {
+    pub fn is_alive(&self) -> bool {
         if self.state == Alive {
             return true
         }
         return false
     }
 
-    pub(crate) fn to_seed_value(&self) -> char {
+    pub fn to_seed_value(&self) -> char {
         match self.state {
             Alive => { ALIVE_SEED_VALUE }
             Dead => { DEAD_SEED_VALUE }
         }
     }
 
-    pub(crate) fn to_display(&self) -> char {
+    pub fn to_display(&self) -> char {
         match self.state {
             Alive => { ALIVE_DISPLAY }
             Dead => { DEAD_DISPLAY }
         }
     }
 
-    pub(crate) fn new(state: CellState, row: i32, column: i32) -> Result<Cell, String> {
+    pub fn new(state: CellState, row: U, column: U) -> Result<Cell<U>, String> {
         Ok(Cell {
             state,
             row,
@@ -50,5 +52,5 @@ impl Cell {
         })
     }
 
-    pub(crate) fn new_alive(row: i32, column: i32) -> Cell { Self::new(Alive, row, column).unwrap() }
+    pub fn new_alive(row: U, column: U) -> Cell<U> { Self::new(Alive, row, column).unwrap() }
 }
