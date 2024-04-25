@@ -1,6 +1,5 @@
 use std::collections::HashSet;
-use std::hash::Hash;
-use num_traits::{FromPrimitive, ToPrimitive, Unsigned};
+use num_traits::{ToPrimitive};
 use crate::cell::Cell;
 use crate::cell::CellState::{Alive, Dead};
 use crate::seeds::{random_seed_string, seed_string_to_generation};
@@ -14,29 +13,141 @@ pub enum SurfaceType {
     Rectangle,
 }
 
-pub struct Simulation<U: Unsigned + Eq + Hash> {
+pub struct Simulation {
     pub seed: String,
     pub surface_type: SurfaceType,
-    pub rows: U,
-    pub columns: U,
-    pub generation: HashSet<Cell<U>>,
+    pub rows: u16,
+    pub columns: u16,
+    pub generation: HashSet<Cell>,
     pub generation_iteration: u128,
+    pub save_history: Vec<HashSet<Cell>>,
+    pub maximum_saves: u16,
+    pub simulation_cooldown: u16,
 }
 
-impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd> Simulation<U> {
+pub struct SimulationBuilder {
+    rows: Option<u16>,
+    columns: Option<u16>,
+    surface_type: SurfaceType,
+    seed: Option<String>,
+    maximum_saves: u16,
+    simulation_cooldown: u16,
+}
+
+impl Default for SimulationBuilder {
+    fn default() -> Self {
+        Self {
+            rows: Some(10),
+            columns: Some(10),
+            surface_type: Rectangle,
+            seed: None,
+            maximum_saves: 100,
+            simulation_cooldown: 1,
+        }
+    }
+}
+
+impl SimulationBuilder {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn rows(mut self, rows: u16) -> Self {
+        self.rows = Some(rows);
+        self
+    }
+
+    pub fn columns(mut self, columns: u16) -> Self {
+        self.columns = Some(columns);
+        self
+    }
+
+    pub fn surface_type(mut self, surface_type: SurfaceType) -> Self {
+        self.surface_type = surface_type;
+        self
+    }
+
+    pub fn seed(mut self, seed: String) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    pub fn maximum_saves(mut self, maximum_saves: u16) -> Self {
+        self.maximum_saves = maximum_saves;
+        self
+    }
+
+    pub fn simulation_cooldown(mut self, simulation_cooldown: u16) -> Self {
+        self.simulation_cooldown = simulation_cooldown;
+        self
+    }
+
+    pub fn build(self) -> Result<Simulation, String> {
+        let (rows, columns, seed) = match (self.rows, self.columns, self.seed) {
+            (Some(rows), Some(columns), Some(seed)) => (rows, columns, seed),
+            (Some(rows), Some(columns), None) => (rows, columns, random_seed_string(rows, columns)),
+            (Some(rows), None, Some(seed)) => {
+                let seed_length = seed.len() as u16;
+                if seed_length % rows == 0 {
+                    (rows, seed_length / rows, seed)
+                } else {
+                    return Err(format!("The provided seed of \"{}\", must be divisible by the number of rows: {}", seed, rows));
+                }
+            }
+            (None, Some(columns), Some(seed)) => {
+                let seed_length = seed.len() as u16;
+                if seed_length % columns == 0 {
+                    (seed_length / columns, columns, seed)
+                } else {
+                    return Err(format!("The provided seed of \"{}\", must be divisible by the number of columns: {}", seed, columns));
+                }
+            }
+            (None, None, Some(seed)) => {
+                let seed_length = seed.len() as u16;
+                if let Some(sqrt) = (seed_length as f32).sqrt().to_u16() {
+                    (sqrt, sqrt, seed)
+                } else {
+                    return Err(format!("The provided seed of \"{}\", must be of a square size (has an integer square root)", seed));
+                }
+            }
+            (Some(_), None, None) | (None, Some(_), None) => {
+                return Err("Both rows and columns must be provided if no seed is provided".to_string());
+            }
+            (None, None, None) => {
+                return Err("One of the following must be provided: rows, columns, or seed".to_string());
+            }
+        };
+
+        let generation = seed_string_to_generation(seed.clone(), columns).unwrap();
+
+        Ok(Simulation {
+            seed,
+            surface_type: self.surface_type,
+            rows,
+            columns,
+            generation,
+            generation_iteration: 0,
+            save_history: Vec::new(),
+            maximum_saves: self.maximum_saves,
+            simulation_cooldown,
+        })
+    }
+}
+
+impl Simulation {
 
     pub fn get_seed_string(&self) -> String { self.seed.clone() }
 
     pub fn get_generation_string(&self) -> String {
         let mut current_generation = String::new();
-        let mut row = U::zero();
+        let mut row = 0;
         while row < self.rows {
-            let mut column = U::zero();
+            let mut column = 0;
             while column < self.columns {
                 current_generation.push(self.get_cell(row.clone(), column.clone()).to_seed_value());
-                column = column + U::one();
+                column = column + 1;
             }
-            row = row + U::one();
+            row = row + 1;
         }
         current_generation
     }
@@ -46,15 +157,15 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
         println!("SEED: {}", self.seed);
         if print_with_grid {
             let first_iteration = Self::from_seed_generation(self);
-            let mut row = U::zero();
+            let mut row = 0;
             while row < first_iteration.rows {
-                let mut column = U::zero();
+                let mut column = 0;
                 while column < first_iteration.columns {
                     print!("{}", first_iteration.get_cell(row.clone(), column.clone()).to_display());
-                    column = column + U::one();
+                    column = column + 1;
                 }
                 print!("\n");
-                row = row + U::one();
+                row = row + 1;
             }
         }
     }
@@ -65,19 +176,19 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
         } else {
             println!("{}", self.generation_iteration);
         }
-        let mut row = U::zero();
+        let mut row = 0;
         while row < self.rows {
-            let mut column = U::zero();
+            let mut column = 0;
             while column < self.columns {
                 print!("{}", self.get_cell(row.clone(), column.clone()).to_display());
-                column = column + U::one();
+                column = column + 1;
             }
             print!("\n");
-            row = row + U::one();
+            row = row + 1;
         }
     }
 
-    fn get_cell(&self, row: U, column: U) -> Cell<U> {
+    fn get_cell(&self, row: u16, column: u16) -> Cell {
         let mut cell = Cell::new_alive(row, column);
         if !self.generation.contains(&cell) {
             cell.state = Dead;
@@ -85,7 +196,8 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
         return cell
     }
 
-    fn get_alive_neighbors(&self, cell: Cell<U>) -> u8 {
+    // Behold, efficiency
+    fn get_alive_neighbors(&self, cell: Cell) -> u8 {
         let origin_row = cell.row;
         let origin_column = cell.column;
         let mut wrapping_vertically = false;
@@ -111,10 +223,10 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
             }
         }
 
-        let on_top_edge = origin_row == U::zero();
-        let on_bottom_edge = origin_row == self.rows.clone() - U::one();
-        let on_left_edge = origin_column == U::zero();
-        let on_right_edge = origin_column == self.columns.clone() - U::one();
+        let on_top_edge = origin_row == 0;
+        let on_bottom_edge = origin_row == self.rows.clone() - 1;
+        let on_left_edge = origin_column == 0;
+        let on_right_edge = origin_column == self.columns.clone() - 1;
 
         let top_left_is_alive = {
             let result = (|| {
@@ -127,14 +239,14 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 let neighbor_row;
                 let neighbor_column;
                 if on_top_edge && wrapping_vertically {
-                    neighbor_row = self.rows.clone() - U::one()
+                    neighbor_row = self.rows.clone() - 1
                 } else {
-                    neighbor_row = origin_row.clone() - U::one()
+                    neighbor_row = origin_row.clone() - 1
                 }
                 if on_left_edge && wrapping_horizontally {
-                    neighbor_column = self.columns.clone() - U::one()
+                    neighbor_column = self.columns.clone() - 1
                 } else {
-                    neighbor_column = origin_column.clone() - U::one()
+                    neighbor_column = origin_column.clone() - 1
                 }
                 self.get_cell(neighbor_row, neighbor_column).is_alive()
             })();
@@ -147,9 +259,9 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 }
                 let neighbor_row;
                 if on_top_edge && wrapping_vertically {
-                    neighbor_row = self.rows.clone() - U::one()
+                    neighbor_row = self.rows.clone() - 1
                 } else {
-                    neighbor_row = origin_row.clone() - U::one()
+                    neighbor_row = origin_row.clone() - 1
                 }
                 self.get_cell(neighbor_row, origin_column.clone()).is_alive()
             })();
@@ -166,14 +278,14 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 let neighbor_row;
                 let neighbor_column;
                 if on_top_edge && wrapping_vertically {
-                    neighbor_row = self.rows.clone() - U::one()
+                    neighbor_row = self.rows.clone() - 1
                 } else {
-                    neighbor_row = origin_row.clone() - U::one()
+                    neighbor_row = origin_row.clone() - 1
                 }
                 if on_right_edge && wrapping_horizontally {
-                    neighbor_column = U::zero();
+                    neighbor_column = 0;
                 } else {
-                    neighbor_column = origin_column.clone() + U::one()
+                    neighbor_column = origin_column.clone() + 1
                 }
                 self.get_cell(neighbor_row, neighbor_column).is_alive()
             })();
@@ -186,9 +298,9 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 }
                 let neighbor_column;
                 if on_left_edge && wrapping_horizontally {
-                    neighbor_column = self.columns.clone() - U::one()
+                    neighbor_column = self.columns.clone() - 1
                 } else {
-                    neighbor_column = origin_column.clone() - U::one()
+                    neighbor_column = origin_column.clone() - 1
                 }
                 self.get_cell(origin_row.clone(), neighbor_column).is_alive()
             })();
@@ -201,9 +313,9 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 }
                 let neighbor_column;
                 if on_right_edge && wrapping_horizontally {
-                    neighbor_column = U::zero();
+                    neighbor_column = 0;
                 } else {
-                    neighbor_column = origin_column.clone() + U::one()
+                    neighbor_column = origin_column.clone() + 1
                 }
                 self.get_cell(origin_row.clone(), neighbor_column).is_alive()
             })();
@@ -220,14 +332,14 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 let neighbor_row;
                 let neighbor_column;
                 if on_bottom_edge && wrapping_vertically {
-                    neighbor_row = U::zero();
+                    neighbor_row = 0;
                 } else {
-                    neighbor_row = origin_row.clone() + U::one()
+                    neighbor_row = origin_row.clone() + 1
                 }
                 if on_left_edge && wrapping_horizontally {
-                    neighbor_column = self.columns.clone() - U::one()
+                    neighbor_column = self.columns.clone() - 1
                 } else {
-                    neighbor_column = origin_column.clone() - U::one()
+                    neighbor_column = origin_column.clone() - 1
                 }
                 self.get_cell(neighbor_row, neighbor_column).is_alive()
             })();
@@ -240,9 +352,9 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 }
                 let neighbor_row;
                 if on_bottom_edge && wrapping_vertically {
-                    neighbor_row = U::zero();
+                    neighbor_row = 0;
                 } else {
-                    neighbor_row = origin_row.clone() + U::one()
+                    neighbor_row = origin_row.clone() + 1
                 }
                 self.get_cell(neighbor_row, origin_column.clone()).is_alive()
             })();
@@ -259,14 +371,14 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                 let neighbor_row;
                 let neighbor_column;
                 if on_bottom_edge && wrapping_vertically {
-                    neighbor_row = U::zero();
+                    neighbor_row = 0;
                 } else {
-                    neighbor_row = origin_row.clone() + U::one()
+                    neighbor_row = origin_row.clone() + 1
                 }
                 if on_right_edge && wrapping_horizontally {
-                    neighbor_column = U::zero();
+                    neighbor_column = 0;
                 } else {
-                    neighbor_column = origin_column.clone() + U::one()
+                    neighbor_column = origin_column.clone() + 1
                 }
                 self.get_cell(neighbor_row, neighbor_column).is_alive()
             })();
@@ -285,15 +397,41 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
         count
     }
 
-    pub fn simulate_generations(&mut self, iterations: u128) {
-        if iterations < 1 {
-            return
+    pub fn save_generation(&mut self) {
+        if self.save_history.len() as u16 == self.maximum_saves {
+            self.save_history.remove(0);
+        }
+        self.save_history.push(self.generation.clone());
+    }
+
+    pub fn rollback_generations(&mut self, iterations: u128) {
+        if iterations == 0 {
+            return;
         }
         for _ in 0..iterations {
+            if let Some(previous_generation) = self.save_history.pop() {
+                self.generation = previous_generation;
+                self.generation_iteration -= 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn rollback_generation(&mut self) {
+        self.rollback_generations(1)
+    }
+
+    pub fn simulate_generations(&mut self, iterations: u128) {
+        if iterations == 0 {
+            return
+        }
+        self.save_generation();
+        for _ in 0..iterations {
             let mut new_generation = self.generation.clone();
-            let mut row = U::zero();
+            let mut row = 0;
             while row < self.rows {
-                let mut column = U::zero();
+                let mut column = 0;
                 while column < self.columns {
                     let mut cell = self.get_cell(row.clone(), column.clone());
                     let alive_neighbors = self.get_alive_neighbors(cell.clone());
@@ -308,9 +446,9 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
                             new_generation.insert(cell);
                         }
                     }
-                    column = column + U::one();
+                    column = column + 1;
                 }
-                row = row + U::one();
+                row = row + 1;
             }
             self.generation = new_generation;
             self.generation_iteration += 1;
@@ -321,12 +459,7 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
         self.simulate_generations(1)
     }
 
-    fn is_perfect_square(number: U) -> bool {
-        let sqrt = U::from_f32(U::to_f32(&number).unwrap().sqrt()).unwrap();
-        U::to_u128(&sqrt).unwrap().pow(2) == U::to_u128(&number.clone()).unwrap()
-    }
-
-    pub fn clone(&self) -> Simulation<U> {
+    pub fn clone(&self) -> Simulation {
         Simulation {
             seed: self.seed.clone(),
             surface_type: self.surface_type.clone(),
@@ -334,10 +467,12 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
             columns: self.columns.clone(),
             generation: self.generation.clone(),
             generation_iteration: self.generation_iteration,
+            save_history: self.save_history.clone(),
+            maximum_saves: self.maximum_saves,
         }
     }
 
-    pub fn from_seed_generation(simulation: &Simulation<U>) -> Simulation<U> {
+    pub fn from_seed_generation(simulation: &Simulation) -> Simulation {
         Simulation {
             seed: simulation.seed.clone(),
             surface_type: simulation.surface_type.clone(),
@@ -345,75 +480,8 @@ impl<U: Unsigned + Clone + ToPrimitive + FromPrimitive + Eq + Hash + PartialOrd>
             columns: simulation.columns.clone(),
             generation: seed_string_to_generation(simulation.seed.clone(), simulation.columns.clone()).unwrap(),
             generation_iteration: 0,
+            save_history: simulation.save_history.clone(),
+            maximum_saves: simulation.maximum_saves,
         }
     }
-
-    pub fn new(rows_parameter: Option<U>, columns_parameter: Option<U>, surface_type: SurfaceType, seed: Option<String>) -> Result<Simulation<U>, String> {
-        let mut calculated_seed = String::new();
-        let mut rows = rows_parameter.clone().unwrap_or(U::zero());
-        let mut columns = columns_parameter.clone().unwrap_or(U::zero());
-        if seed.is_some() {
-            calculated_seed = seed.clone().unwrap();
-            let seed_length = U::from_usize(seed.clone().unwrap().len()).unwrap();
-            if rows_parameter.is_some() && columns_parameter.is_none() {
-                if seed_length.clone() % rows.clone() == U::zero() {
-                    columns = seed_length.clone() / rows.clone();
-                } else {
-                    return Err(format!("The provided seed of \"{}\", must be divisible by the number of rows: {}, \
-                    if the number of columns is not provided", seed.unwrap(), U::to_u128(&rows.clone()).unwrap()))
-                }
-            } else if columns_parameter.is_some() && rows_parameter.is_none() {
-                if seed_length.clone() % columns.clone() == U::zero() {
-                    rows = seed_length.clone() / columns.clone();
-                } else {
-                    return Err(format!("The provided seed of \"{}\", must be divisible by the number of columns: {}, \
-                    if the number of rows is not provided", seed.unwrap(), U::to_u128(&columns.clone()).unwrap()))
-                }
-            } else if rows_parameter.is_none() && columns_parameter.is_none() {
-                if Self::is_perfect_square(seed_length.clone()) {
-                    let sqrt = U::from_f32(U::to_f32(&seed_length).unwrap().sqrt()).unwrap();
-                    columns = sqrt.clone();
-                    rows = sqrt.clone();
-                } else {
-                    return Err(format!("The provided seed of \"{}\", must be of a square size (has an integer square root) \
-                    if the number of rows and columns are not provided", seed.unwrap()))
-                }
-            } else if rows_parameter.is_some() && columns_parameter.is_some() {
-                let simulation_area = rows.clone() * columns.clone();
-                if simulation_area != seed_length.clone() {
-                    return Err(format!("Simulation area (rows * columns) of {}, must equal seed length of {}", U::to_u128(&simulation_area).unwrap(), U::to_u128(&seed_length).unwrap()))
-                }
-            }
-        } else {
-            if rows_parameter.is_some() && columns_parameter.is_some() {
-                calculated_seed = seed.unwrap_or(random_seed_string(rows.clone(), columns.clone()));
-            } else if rows_parameter.is_some() && columns_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(random_seed_string(rows.clone(), rows.clone()));
-            } else if columns_parameter.is_some() && rows_parameter.is_none() {
-                calculated_seed = seed.unwrap_or(random_seed_string(columns.clone(), columns.clone()));
-            } else if rows_parameter.is_none() && columns_parameter.is_none() {
-                return Err("One of the following must be provided: rows, columns, or seed".to_string())
-            }
-        }
-        Ok(Simulation {
-            seed: calculated_seed.clone(),
-            surface_type,
-            generation: seed_string_to_generation(calculated_seed.clone(), columns.clone()).unwrap(),
-            rows,
-            columns,
-            generation_iteration: 0,
-        })
-    }
-
-    pub fn new_ball(rows: U, columns: U, seed: String) -> Simulation<U> { Self::new(Some(rows), Some(columns), Ball, Some(seed)).unwrap() }
-    pub fn new_rectangle(rows: U, columns: U, seed: String) -> Simulation<U> { Self::new(Some(rows), Some(columns), Rectangle, Some(seed)).unwrap() }
-    pub fn new_square(size: U, seed: String) -> Simulation<U> { Self::new(Some(size), None, Rectangle, Some(seed)).unwrap() }
-    pub fn new_horizontal_loop(rows: U, columns: U, seed: String) -> Simulation<U> { Self::new(Some(rows), Some(columns), HorizontalLoop, Some(seed)).unwrap() }
-    pub fn new_vertical_loop(rows: U, columns: U, seed: String) -> Simulation<U> { Self::new(Some(rows), Some(columns), VerticalLoop, Some(seed)).unwrap() }
-
-    pub fn new_ball_rand(rows: U, columns: U) -> Simulation<U> { Self::new(Some(rows), Some(columns), Ball, None).unwrap() }
-    pub fn new_rectangle_rand(rows: U, columns: U) -> Simulation<U> { Self::new(Some(rows), Some(columns), Rectangle, None).unwrap() }
-    pub fn new_square_rand(size: U) -> Simulation<U> { Self::new(Some(size), None, Rectangle, None).unwrap() }
-    pub fn new_horizontal_loop_rand(rows: U, columns: U) -> Simulation<U> { Self::new(Some(rows), Some(columns), HorizontalLoop, None).unwrap() }
-    pub fn new_vertical_loop_rand(rows: U, columns: U) -> Simulation<U> { Self::new(Some(rows), Some(columns), VerticalLoop, None).unwrap() }
 }

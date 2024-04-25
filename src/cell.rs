@@ -1,5 +1,4 @@
 use std::hash::Hash;
-use num_traits::Unsigned;
 use crate::cell::CellState::*;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -9,10 +8,10 @@ pub enum CellState {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub struct Cell<U: Unsigned + Eq + Hash> {
+pub struct Cell {
     pub state: CellState,
-    pub row: U,
-    pub column: U,
+    pub row: u16,
+    pub column: u16,
 }
 
 pub const ALIVE_DISPLAY: char = '*';
@@ -21,7 +20,7 @@ pub const DEAD_DISPLAY: char = '-';
 pub const ALIVE_SEED_VALUE: char = '1';
 pub const DEAD_SEED_VALUE: char = '0';
 
-impl<U: Unsigned + Eq + Hash> Cell<U> {
+impl Cell {
 
     pub fn is_alive(&self) -> bool {
         if self.state == Alive {
@@ -44,7 +43,7 @@ impl<U: Unsigned + Eq + Hash> Cell<U> {
         }
     }
 
-    pub fn new(state: CellState, row: U, column: U) -> Result<Cell<U>, String> {
+    pub fn new(state: CellState, row: u16, column: u16) -> Result<Cell, String> {
         Ok(Cell {
             state,
             row,
@@ -52,5 +51,5 @@ impl<U: Unsigned + Eq + Hash> Cell<U> {
         })
     }
 
-    pub fn new_alive(row: U, column: U) -> Cell<U> { Self::new(Alive, row, column).unwrap() }
+    pub fn new_alive(row: u16, column: u16) -> Cell { Self::new(Alive, row, column).unwrap() }
 }

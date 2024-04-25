@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use std::hash::Hash;
-use num_traits::{FromPrimitive, ToPrimitive, Unsigned};
 use game_of_life::simulation::*;
 
 fn main() {
@@ -28,15 +26,39 @@ pub(crate) fn print_side_by_side(left_grid: String, left_grid_title: &str, right
 
 pub(crate) fn test_printing() {
     println!("~~~TESTING PRINTING~~~");
-    test_surface_printing(15, 3, Simulation::new_rectangle_rand, "Rectangle");
-    test_surface_printing(15, 3, Simulation::new_ball_rand, "Ball");
-    test_surface_printing(15, 3, Simulation::new_vertical_loop_rand, "Vertical Loop");
-    test_surface_printing(15, 3, Simulation::new_horizontal_loop_rand, "Horizontal Loop");
+    test_surface_printing(15, 3, |rows, cols|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::Rectangle)
+            .build()
+            .unwrap(), "Rectangle");
+    test_surface_printing(15, 3, |rows, cols|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::Ball)
+            .build()
+            .unwrap(), "Ball");
+    test_surface_printing(15, 3, |rows, cols|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::VerticalLoop)
+            .build()
+            .unwrap(), "Vertical Loop");
+    test_surface_printing(15, 3, |rows, cols|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::HorizontalLoop)
+            .build()
+            .unwrap(), "Horizontal Loop");
 }
 
-fn test_surface_printing<U: Unsigned + Eq + Hash + Clone + FromPrimitive + ToPrimitive + PartialOrd, S>(simulation_size: u8, generation_iterations: u128, new_simulation: S, surface_name: &str)
+fn test_surface_printing<S>(simulation_size: u16, generation_iterations: u128, new_simulation: S, surface_name: &str)
     where
-        S: Fn(u8, u8) -> Simulation<U>,
+        S: Fn(u16, u16) -> Simulation,
 {
     println!("Testing {}:", surface_name);
     let mut simulation = new_simulation(simulation_size, simulation_size);
@@ -67,35 +89,63 @@ pub(crate) fn test_surface_behaviors() {
     let left_spaceship_wrapped = "000000000000000000000001100000011110000110110000011000000000000000000000000000000";
     let right_spaceship_wrapped = "000000000000000000001100000011110000011011000000110000000000000000000000000000000";
 
-    test_surface_behavior(simulation_size, generation_iterations, Simulation::new_rectangle, "Plane",
+    test_surface_behavior(simulation_size, generation_iterations, |rows, cols, seed|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::Rectangle)
+            .seed(seed)
+            .build()
+            .unwrap(), "Rectangle",
                           up_seed, up_spaceship_crashed,
                           down_seed, down_spaceship_crashed,
                           left_seed, left_spaceship_crashed,
                           right_seed, right_spaceship_crashed);
-    test_surface_behavior(simulation_size, generation_iterations, Simulation::new_ball, "Spheroid",
+    test_surface_behavior(simulation_size, generation_iterations, |rows, cols, seed|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::Ball)
+            .seed(seed)
+            .build()
+            .unwrap(), "Ball",
                           up_seed, up_spaceship_wrapped,
                           down_seed, down_spaceship_wrapped,
                           left_seed, left_spaceship_wrapped,
                           right_seed, right_spaceship_wrapped);
-    test_surface_behavior(simulation_size, generation_iterations, Simulation::new_vertical_loop, "Vertical Loop",
+    test_surface_behavior(simulation_size, generation_iterations, |rows, cols, seed|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::VerticalLoop)
+            .seed(seed)
+            .build()
+            .unwrap(), "Vertical Loop",
                           up_seed, up_spaceship_wrapped,
                           down_seed, down_spaceship_wrapped,
                           left_seed, left_spaceship_crashed,
                           right_seed, right_spaceship_crashed);
-    test_surface_behavior(simulation_size, generation_iterations, Simulation::new_horizontal_loop, "Horizontal Loop",
+    test_surface_behavior(simulation_size, generation_iterations, |rows, cols, seed|
+        SimulationBuilder::new()
+            .rows(rows)
+            .columns(cols)
+            .surface_type(SurfaceType::HorizontalLoop)
+            .seed(seed)
+            .build()
+            .unwrap(), "Horizontal Loop",
                           up_seed, up_spaceship_crashed,
                           down_seed, down_spaceship_crashed,
                           left_seed, left_spaceship_wrapped,
                           right_seed, right_spaceship_wrapped);
 }
 
-fn test_surface_behavior<U: Unsigned + Eq + Hash + Clone + FromPrimitive + ToPrimitive + PartialOrd, S>(simulation_size: u8, generation_iterations: u128, new_simulation: S, surface_name: &str,
-                                         up_seed: &str, up_result: &str,
-                                         down_seed: &str, down_result: &str,
-                                         left_seed: &str, left_result: &str,
-                                         right_seed: &str, right_result: &str)
+fn test_surface_behavior<S>(simulation_size: u16, generation_iterations: u128, new_simulation: S, surface_name: &str,
+                            up_seed: &str, up_result: &str,
+                            down_seed: &str, down_result: &str,
+                            left_seed: &str, left_result: &str,
+                            right_seed: &str, right_result: &str)
     where
-        S: Fn(u8, u8, String) -> Simulation<U>,
+        S: Fn(u16, u16, String) -> Simulation,
 {
     println!("Testing {}:", surface_name);
 
@@ -107,7 +157,7 @@ fn test_surface_behavior<U: Unsigned + Eq + Hash + Clone + FromPrimitive + ToPri
         println!("{}", passed_or_failed(simulation_is_expected));
         if !simulation_is_expected {
             print_side_by_side(simulation.get_generation_string(), "RESULT",
-                               String::from(expected), "EXPECTED", U::to_u128(&simulation.rows).unwrap(), U::to_u128(&simulation.columns).unwrap());
+                               String::from(expected), "EXPECTED", simulation.rows as u128, simulation.columns as u128);
         }
     };
 
