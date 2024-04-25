@@ -1,11 +1,13 @@
 use std::collections::HashSet;
-use num_traits::{ToPrimitive};
+use std::fmt::{Debug, Display, Formatter};
+use rand::prelude::ThreadRng;
+use rand::{Rng, thread_rng};
+use crate::cell;
 use crate::cell::Cell;
 use crate::cell::CellState::{Alive, Dead};
-use crate::seeds::{random_seed_string, seed_string_to_generation};
 use crate::simulation::SurfaceType::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SurfaceType {
     Ball,
     HorizontalLoop,
@@ -87,7 +89,7 @@ impl SimulationBuilder {
                 }
             }
             (None, Some(columns), Some(seed)) => {
-                let seed_length = seed.len() as u16;
+                let seed_length: u16 = seed.len() as u16;
                 if seed_length % columns == 0 {
                     (seed_length / columns, columns, seed)
                 } else {
@@ -95,8 +97,11 @@ impl SimulationBuilder {
                 }
             }
             (None, None, Some(seed)) => {
-                let seed_length = seed.len() as u16;
-                if let Some(sqrt) = (seed_length as f32).sqrt().to_u16() {
+                let seed_length: f32 = seed.len() as f32;
+                let sqrt: f32 = seed_length.sqrt();
+                let rounded_sqrt: f32 = sqrt.round();
+                if (rounded_sqrt * rounded_sqrt) as usize == seed.len() {
+                    let sqrt = rounded_sqrt as u16;
                     (sqrt, sqrt, seed)
                 } else {
                     return Err(format!("The provided seed of \"{}\", must be of a square size (has an integer square root)", seed));
@@ -110,7 +115,7 @@ impl SimulationBuilder {
             }
         };
 
-        let generation = seed_string_to_generation(seed.clone(), columns).unwrap();
+        let generation: HashSet<Cell> = string_to_generation(seed.clone(), columns).unwrap();
 
         Ok(Simulation {
             seed,
@@ -127,60 +132,8 @@ impl SimulationBuilder {
 
 impl Simulation {
 
-    pub fn get_seed_string(&self) -> String { self.seed.clone() }
-
-    pub fn get_generation_string(&self) -> String {
-        let mut current_generation = String::new();
-        let mut row = 0;
-        while row < self.rows {
-            let mut column = 0;
-            while column < self.columns {
-                current_generation.push(self.get_cell(row.clone(), column.clone()).to_seed_value());
-                column = column + 1;
-            }
-            row = row + 1;
-        }
-        current_generation
-    }
-
-    pub fn print_seed_generation(&self, print_with_grid: Option<bool>) {
-        let print_with_grid = print_with_grid.unwrap_or(false);
-        println!("SEED: {}", self.seed);
-        if print_with_grid {
-            let first_iteration = Self::from_seed_generation(self);
-            let mut row = 0;
-            while row < first_iteration.rows {
-                let mut column = 0;
-                while column < first_iteration.columns {
-                    print!("{}", first_iteration.get_cell(row.clone(), column.clone()).to_display());
-                    column = column + 1;
-                }
-                print!("\n");
-                row = row + 1;
-            }
-        }
-    }
-
-    pub fn print_current_generation(&self) {
-        if self.generation_iteration == 0 {
-            println!("SEED GENERATION");
-        } else {
-            println!("{}", self.generation_iteration);
-        }
-        let mut row = 0;
-        while row < self.rows {
-            let mut column = 0;
-            while column < self.columns {
-                print!("{}", self.get_cell(row.clone(), column.clone()).to_display());
-                column = column + 1;
-            }
-            print!("\n");
-            row = row + 1;
-        }
-    }
-
-    fn get_cell(&self, row: u16, column: u16) -> Cell {
-        let mut cell = Cell::new_alive(row, column);
+    pub(crate) fn get_cell(&self, row: u16, column: u16) -> Cell {
+        let mut cell: Cell = Cell::new_alive(row, column);
         if !self.generation.contains(&cell) {
             cell.state = Dead;
         }
@@ -189,12 +142,12 @@ impl Simulation {
 
     // Behold, efficiency
     fn get_alive_neighbors(&self, cell: Cell) -> u8 {
-        let origin_row = cell.row;
-        let origin_column = cell.column;
-        let mut wrapping_vertically = false;
-        let mut wrapping_horizontally = false;
-        let mut bounded_vertically = false;
-        let mut bounded_horizontally = false;
+        let origin_row: u16 = cell.row;
+        let origin_column: u16 = cell.column;
+        let mut wrapping_vertically: bool = false;
+        let mut wrapping_horizontally: bool = false;
+        let mut bounded_vertically: bool = false;
+        let mut bounded_horizontally: bool = false;
         match self.surface_type.clone() {
             Ball => {
                 wrapping_vertically = true;
@@ -214,21 +167,21 @@ impl Simulation {
             }
         }
 
-        let on_top_edge = origin_row == 0;
-        let on_bottom_edge = origin_row == self.rows.clone() - 1;
-        let on_left_edge = origin_column == 0;
-        let on_right_edge = origin_column == self.columns.clone() - 1;
+        let on_top_edge: bool = origin_row == 0;
+        let on_bottom_edge: bool = origin_row == self.rows.clone() - 1;
+        let on_left_edge: bool = origin_column == 0;
+        let on_right_edge: bool = origin_column == self.columns.clone() - 1;
 
-        let top_left_is_alive = {
-            let result = (|| {
+        let top_left_is_alive: bool = {
+            let result: bool = (|| {
                 if on_top_edge && bounded_vertically {
                     return false;
                 }
                 if on_left_edge && bounded_horizontally {
                     return false;
                 }
-                let neighbor_row;
-                let neighbor_column;
+                let neighbor_row: u16;
+                let neighbor_column: u16;
                 if on_top_edge && wrapping_vertically {
                     neighbor_row = self.rows.clone() - 1
                 } else {
@@ -243,12 +196,12 @@ impl Simulation {
             })();
             result
         };
-        let top_center_is_alive = {
-            let result = (|| {
+        let top_center_is_alive: bool = {
+            let result: bool = (|| {
                 if on_top_edge && bounded_vertically {
                     return false;
                 }
-                let neighbor_row;
+                let neighbor_row: u16;
                 if on_top_edge && wrapping_vertically {
                     neighbor_row = self.rows.clone() - 1
                 } else {
@@ -258,16 +211,16 @@ impl Simulation {
             })();
             result
         };
-        let top_right_is_alive = {
-            let result = (|| {
+        let top_right_is_alive: bool = {
+            let result: bool = (|| {
                 if on_top_edge && bounded_vertically {
                     return false;
                 }
                 if on_right_edge && bounded_horizontally {
                     return false;
                 }
-                let neighbor_row;
-                let neighbor_column;
+                let neighbor_row: u16;
+                let neighbor_column: u16;
                 if on_top_edge && wrapping_vertically {
                     neighbor_row = self.rows.clone() - 1
                 } else {
@@ -282,12 +235,12 @@ impl Simulation {
             })();
             result
         };
-        let middle_left_is_alive = {
-            let result = (|| {
+        let middle_left_is_alive: bool = {
+            let result: bool = (|| {
                 if on_left_edge && bounded_horizontally {
                     return false;
                 }
-                let neighbor_column;
+                let neighbor_column: u16;
                 if on_left_edge && wrapping_horizontally {
                     neighbor_column = self.columns.clone() - 1
                 } else {
@@ -297,12 +250,12 @@ impl Simulation {
             })();
             result
         };
-        let middle_right_is_alive = {
-            let result = (|| {
+        let middle_right_is_alive: bool = {
+            let result: bool = (|| {
                 if on_right_edge && bounded_horizontally {
                     return false;
                 }
-                let neighbor_column;
+                let neighbor_column: u16;
                 if on_right_edge && wrapping_horizontally {
                     neighbor_column = 0;
                 } else {
@@ -312,16 +265,16 @@ impl Simulation {
             })();
             result
         };
-        let bottom_left_is_alive = {
-            let result = (|| {
+        let bottom_left_is_alive: bool = {
+            let result: bool = (|| {
                 if on_left_edge && bounded_horizontally {
                     return false;
                 }
                 if on_bottom_edge && bounded_vertically {
                     return false;
                 }
-                let neighbor_row;
-                let neighbor_column;
+                let neighbor_row: u16;
+                let neighbor_column: u16;
                 if on_bottom_edge && wrapping_vertically {
                     neighbor_row = 0;
                 } else {
@@ -336,12 +289,12 @@ impl Simulation {
             })();
             result
         };
-        let bottom_center_is_alive = {
-            let result = (|| {
+        let bottom_center_is_alive: bool = {
+            let result: bool = (|| {
                 if on_bottom_edge && bounded_vertically {
                     return false;
                 }
-                let neighbor_row;
+                let neighbor_row: u16;
                 if on_bottom_edge && wrapping_vertically {
                     neighbor_row = 0;
                 } else {
@@ -351,16 +304,16 @@ impl Simulation {
             })();
             result
         };
-        let bottom_right_is_alive = {
-            let result = (|| {
+        let bottom_right_is_alive: bool = {
+            let result: bool = (|| {
                 if on_bottom_edge && bounded_vertically {
                     return false;
                 }
                 if on_right_edge && bounded_horizontally {
                     return false;
                 }
-                let neighbor_row;
-                let neighbor_column;
+                let neighbor_row: u16;
+                let neighbor_column: u16;
                 if on_bottom_edge && wrapping_vertically {
                     neighbor_row = 0;
                 } else {
@@ -376,7 +329,7 @@ impl Simulation {
             result
         };
 
-        let mut count = 0;
+        let mut count: u8 = 0;
         if top_left_is_alive { count += 1 }
         if top_center_is_alive { count += 1 }
         if top_right_is_alive { count += 1 }
@@ -419,14 +372,14 @@ impl Simulation {
         }
         self.save_generation();
         for _ in 0..iterations {
-            let mut new_generation = self.generation.clone();
-            let mut row = 0;
+            let mut new_generation: HashSet<Cell> = self.generation.clone();
+            let mut row: u16 = 0;
             while row < self.rows {
-                let mut column = 0;
+                let mut column: u16 = 0;
                 while column < self.columns {
-                    let mut cell = self.get_cell(row.clone(), column.clone());
-                    let alive_neighbors = self.get_alive_neighbors(cell.clone());
-                    let cell_alive = cell.is_alive();
+                    let mut cell: Cell = self.get_cell(row.clone(), column.clone());
+                    let alive_neighbors: u8 = self.get_alive_neighbors(cell.clone());
+                    let cell_alive: bool = cell.is_alive();
                     if cell_alive {
                         if alive_neighbors < 2 || alive_neighbors > 3 {
                             new_generation.remove(&cell);
@@ -458,7 +411,36 @@ impl Simulation {
         self.save_history.len() >= period && self.generation == self.save_history[self.save_history.len() - (period)]
     }
 
-    pub fn clone(&self) -> Simulation {
+    pub fn as_seed(&self) -> Simulation {
+        Simulation {
+            seed: self.seed.clone(),
+            surface_type: self.surface_type.clone(),
+            rows: self.rows.clone(),
+            columns: self.columns.clone(),
+            generation: string_to_generation(self.seed.clone(), self.columns.clone()).unwrap(),
+            generation_iteration: 0,
+            save_history: self.save_history.clone(),
+            maximum_saves: self.maximum_saves,
+        }
+    }
+
+    pub fn generation_string(&self) -> String {
+        let mut current_generation = String::new();
+        let mut row = 0;
+        while row < self.rows {
+            let mut column = 0;
+            while column < self.columns {
+                current_generation.push(self.get_cell(row.clone(), column.clone()).as_char());
+                column = column + 1;
+            }
+            row = row + 1;
+        }
+        current_generation
+    }
+}
+
+impl Clone for Simulation {
+    fn clone(&self) -> Self {
         Simulation {
             seed: self.seed.clone(),
             surface_type: self.surface_type.clone(),
@@ -470,17 +452,53 @@ impl Simulation {
             maximum_saves: self.maximum_saves,
         }
     }
+}
 
-    pub fn from_seed_generation(simulation: &Simulation) -> Simulation {
-        Simulation {
-            seed: simulation.seed.clone(),
-            surface_type: simulation.surface_type.clone(),
-            rows: simulation.rows.clone(),
-            columns: simulation.columns.clone(),
-            generation: seed_string_to_generation(simulation.seed.clone(), simulation.columns.clone()).unwrap(),
-            generation_iteration: 0,
-            save_history: simulation.save_history.clone(),
-            maximum_saves: simulation.maximum_saves,
+impl Display for Simulation {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        if self.generation_iteration == 0 {
+            write!(f, "SEED GENERATION\n")?;
+        } else {
+            write!(f, "{}\n", self.generation_iteration)?;
         }
+        for row in 0..self.rows {
+            for column in 0..self.columns {
+                write!(f, "{}", self.get_cell(row, column).as_char())?;
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
     }
+}
+
+pub fn string_to_generation(seed: String, columns: u16) -> Result<HashSet<Cell>, String> {
+    let mut generation: HashSet<Cell> = HashSet::new();
+    let values: Vec<char> = seed.chars().collect();
+    for i in 0..values.len() {
+        let index: u16 = i as u16;
+        let row_index: u16 = index.clone() / columns.clone();
+        let column_index: u16 = index % columns.clone();
+        let value: char = values.get(i).unwrap().clone();
+        match value {
+            cell::ALIVE_CHAR => {
+                generation.insert(Cell::new_alive(row_index, column_index));
+            }
+            cell::DEAD_CHAR => {}
+            _ => return Err(format!("Unexpected seed character: {}", value)),
+        };
+    }
+    Ok(generation)
+}
+
+pub fn random_seed_string(rows: u16, columns: u16) -> String {
+    let length: usize = (rows * columns).into();
+    let mut rng: ThreadRng = thread_rng();
+    (0..length).map(|_|
+        {
+            if rng.gen() {
+                cell::ALIVE_CHAR
+            } else {
+                cell::DEAD_CHAR
+            }
+        }).collect()
 }

@@ -1,4 +1,3 @@
-use game_of_life::seeds::random_seed_string;
 use game_of_life::simulation::*;
 
 fn main() {
@@ -21,7 +20,6 @@ fn main() {
         let mut still_or_period = false;
 
         while !still_or_period {
-            active_simulation.print_current_generation();
             active_simulation.simulate_generation();
             still_or_period = active_simulation.is_still();
             for i in 2..=active_simulation.maximum_saves {
@@ -42,7 +40,7 @@ fn main() {
                 }
             }
         }
-        if active_simulation.clone().generation_iteration - 1 > active_simulation.maximum_saves as u128 {
+        if active_simulation.clone().generation_iteration - 1 > active_simulation.maximum_saves {
             println!("\nThe maximum generation limit of {} has been recorded, stopping all simulations.", active_simulation.maximum_saves);
             break;
         }

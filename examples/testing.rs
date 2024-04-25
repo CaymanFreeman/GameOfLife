@@ -62,11 +62,9 @@ fn test_surface_printing<S>(simulation_size: u16, generation_iterations: u128, n
 {
     println!("Testing {}:", surface_name);
     let mut simulation = new_simulation(simulation_size, simulation_size);
-    simulation.print_seed_generation(Some(true));
-    println!();
+    println!("{}\n", simulation.as_seed());
     simulation.simulate_generations(generation_iterations);
-    simulation.print_current_generation();
-    println!();
+    println!("{}\n", simulation);
 }
 
 pub(crate) fn test_surface_behaviors() {
@@ -74,20 +72,20 @@ pub(crate) fn test_surface_behaviors() {
     let simulation_size = 9;
     let generation_iterations = 15;
 
-    let up_seed = "000000000000000000000111000000100100000100000000100000000010100000000000000000000";
-    let down_seed = "000000000000000000000010100000100000000100000000100100000111000000000000000000000";
-    let left_seed = "000000000000000000000100100001000000001000100001111000000000000000000000000000000";
-    let right_seed = "000000000000000000001001000000000100001000100000111100000000000000000000000000000";
+    let up_seed = "---------------------***------*--*-----*--------*---------*-*--------------------";
+    let down_seed = "----------------------*-*-----*--------*--------*--*-----***---------------------";
+    let left_seed = "---------------------*--*----*--------*---*----****------------------------------";
+    let right_seed = "--------------------*--*---------*----*---*-----****-----------------------------";
 
-    let up_spaceship_crashed = "000000000000000000000000100000000011000000110000000000000000000000000000000000000";
-    let down_spaceship_crashed = "000000000000000000000000000000000000000000110000000011000000100000000000000000000";
-    let left_spaceship_crashed = "000100000000110000001010000000000000000000000000000000000000000000000000000000000";
-    let right_spaceship_crashed = "000001000000011000000010100000000000000000000000000000000000000000000000000000000";
+    let up_spaceship_crashed = "------------------------*---------**------**-------------------------------------";
+    let down_spaceship_crashed = "------------------------------------------**--------**------*--------------------";
+    let left_spaceship_crashed = "---*--------**------*-*----------------------------------------------------------";
+    let right_spaceship_crashed = "-----*-------**-------*-*--------------------------------------------------------";
 
-    let up_spaceship_wrapped = "000000000000000000000000000000010000000111000000101100000011100000011000000000000";
-    let down_spaceship_wrapped = "000000000000011000000011100000101100000111000000010000000000000000000000000000000";
-    let left_spaceship_wrapped = "000000000000000000000001100000011110000110110000011000000000000000000000000000000";
-    let right_spaceship_wrapped = "000000000000000000001100000011110000011011000000110000000000000000000000000000000";
+    let up_spaceship_wrapped = "-------------------------------*-------***------*-**------***------**------------";
+    let down_spaceship_wrapped = "-------------**-------***-----*-**-----***-------*-------------------------------";
+    let left_spaceship_wrapped = "-----------------------**------****----**-**-----**------------------------------";
+    let right_spaceship_wrapped = "--------------------**------****-----**-**------**-------------------------------";
 
     test_surface_behavior(simulation_size, generation_iterations, |rows, cols, seed|
         SimulationBuilder::new()
@@ -153,10 +151,10 @@ fn test_surface_behavior<S>(simulation_size: u16, generation_iterations: u128, n
         print!("{} Spaceship: ", direction);
         let mut simulation = new_simulation(simulation_size, simulation_size, seed.to_string());
         simulation.simulate_generations(generation_iterations);
-        let simulation_is_expected = simulation.get_generation_string() == expected;
+        let simulation_is_expected = simulation.generation_string() == expected;
         println!("{}", passed_or_failed(simulation_is_expected));
         if !simulation_is_expected {
-            print_side_by_side(simulation.get_generation_string(), "RESULT",
+            print_side_by_side(simulation.generation_string(), "RESULT",
                                String::from(expected), "EXPECTED", simulation.rows as u128, simulation.columns as u128);
         }
     };

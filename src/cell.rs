@@ -14,11 +14,8 @@ pub struct Cell {
     pub column: u16,
 }
 
-pub const ALIVE_DISPLAY: char = '*';
-pub const DEAD_DISPLAY: char = '-';
-
-pub const ALIVE_SEED_VALUE: char = '1';
-pub const DEAD_SEED_VALUE: char = '0';
+pub const ALIVE_CHAR: char = '*';
+pub const DEAD_CHAR: char = '-';
 
 impl Cell {
 
@@ -29,17 +26,10 @@ impl Cell {
         return false
     }
 
-    pub fn to_seed_value(&self) -> char {
+    pub fn as_char(&self) -> char {
         match self.state {
-            Alive => { ALIVE_SEED_VALUE }
-            Dead => { DEAD_SEED_VALUE }
-        }
-    }
-
-    pub fn to_display(&self) -> char {
-        match self.state {
-            Alive => { ALIVE_DISPLAY }
-            Dead => { DEAD_DISPLAY }
+            Alive => { ALIVE_CHAR }
+            Dead => { DEAD_CHAR }
         }
     }
 

@@ -5,12 +5,12 @@ fn main() {
         .rows(9)
         .columns(9)
         .surface_type(SurfaceType::Ball)
-        .seed("000000000000000000000111000000100100000100000000100000000010100000000000000000000".to_string())
+        .seed("---------------------***------*--*-----*--------*---------*-*--------------------".to_string())
         .build()
         .unwrap();
 
     for _ in 0..=11 {
-        ball.print_current_generation();
+        println!("{}", ball);
         ball.simulate_generation();
     }
 
@@ -18,12 +18,12 @@ fn main() {
         .rows(9)
         .columns(9)
         .surface_type(SurfaceType::Rectangle)
-        .seed("000000000000000000000111000000100100000100000000100000000010100000000000000000000".to_string())
+        .seed("---------------------***------*--*-----*--------*---------*-*--------------------".to_string())
         .build()
         .unwrap();
 
     for _ in 0..=11 {
-        square.print_current_generation();
+        println!("{}", square);
         square.simulate_generation();
     }
 }
