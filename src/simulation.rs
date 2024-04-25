@@ -21,8 +21,7 @@ pub struct Simulation {
     pub generation: HashSet<Cell>,
     pub generation_iteration: u128,
     pub save_history: Vec<HashSet<Cell>>,
-    pub maximum_saves: u16,
-    pub simulation_cooldown: u16,
+    pub maximum_saves: u128,
 }
 
 pub struct SimulationBuilder {
@@ -30,19 +29,17 @@ pub struct SimulationBuilder {
     columns: Option<u16>,
     surface_type: SurfaceType,
     seed: Option<String>,
-    maximum_saves: u16,
-    simulation_cooldown: u16,
+    maximum_saves: u128,
 }
 
 impl Default for SimulationBuilder {
     fn default() -> Self {
         Self {
-            rows: Some(10),
-            columns: Some(10),
+            rows: None,
+            columns: None,
             surface_type: Rectangle,
             seed: None,
             maximum_saves: 100,
-            simulation_cooldown: 1,
         }
     }
 }
@@ -72,13 +69,8 @@ impl SimulationBuilder {
         self
     }
 
-    pub fn maximum_saves(mut self, maximum_saves: u16) -> Self {
+    pub fn maximum_saves(mut self, maximum_saves: u128) -> Self {
         self.maximum_saves = maximum_saves;
-        self
-    }
-
-    pub fn simulation_cooldown(mut self, simulation_cooldown: u16) -> Self {
-        self.simulation_cooldown = simulation_cooldown;
         self
     }
 
@@ -129,7 +121,6 @@ impl SimulationBuilder {
             generation_iteration: 0,
             save_history: Vec::new(),
             maximum_saves: self.maximum_saves,
-            simulation_cooldown: self.simulation_cooldown,
         })
     }
 }
@@ -398,7 +389,7 @@ impl Simulation {
     }
 
     pub fn save_generation(&mut self) {
-        if self.save_history.len() as u16 == self.maximum_saves {
+        if self.save_history.len() == self.maximum_saves as usize{
             self.save_history.remove(0);
         }
         self.save_history.push(self.generation.clone());
@@ -459,6 +450,14 @@ impl Simulation {
         self.simulate_generations(1)
     }
 
+    pub fn is_still(&self) -> bool {
+        self.is_period(1)
+    }
+
+    pub fn is_period(&self, period: usize) -> bool {
+        self.save_history.len() >= period && self.generation == self.save_history[self.save_history.len() - (period)]
+    }
+
     pub fn clone(&self) -> Simulation {
         Simulation {
             seed: self.seed.clone(),
@@ -469,7 +468,6 @@ impl Simulation {
             generation_iteration: self.generation_iteration,
             save_history: self.save_history.clone(),
             maximum_saves: self.maximum_saves,
-            simulation_cooldown: self.simulation_cooldown,
         }
     }
 
@@ -483,7 +481,6 @@ impl Simulation {
             generation_iteration: 0,
             save_history: simulation.save_history.clone(),
             maximum_saves: simulation.maximum_saves,
-            simulation_cooldown: simulation.simulation_cooldown,
         }
     }
 }
