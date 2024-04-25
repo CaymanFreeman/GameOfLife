@@ -129,7 +129,7 @@ impl SimulationBuilder {
             generation_iteration: 0,
             save_history: Vec::new(),
             maximum_saves: self.maximum_saves,
-            simulation_cooldown,
+            simulation_cooldown: self.simulation_cooldown,
         })
     }
 }
@@ -469,6 +469,7 @@ impl Simulation {
             generation_iteration: self.generation_iteration,
             save_history: self.save_history.clone(),
             maximum_saves: self.maximum_saves,
+            simulation_cooldown: self.simulation_cooldown,
         }
     }
 
@@ -482,6 +483,7 @@ impl Simulation {
             generation_iteration: 0,
             save_history: simulation.save_history.clone(),
             maximum_saves: simulation.maximum_saves,
+            simulation_cooldown: simulation.simulation_cooldown,
         }
     }
 }
