@@ -1,13 +1,12 @@
 use game_of_life::simulation::*;
 
 fn main() {
-    let rows: u16 = 10;
+    let rows: u16 = 20;
     let columns: u16 = 35;
     let mut fittest_seed: String = String::new();
     let mut fittest_generations: u128 = 0;
     loop {
         println!("The fittest seed so far lasted for {} generations: {}", fittest_generations, fittest_seed);
-        println!("Creating new simulation...\n");
         let mut active_simulation = SimulationBuilder::new()
             .maximum_saves(1000000)
             .rows(rows)

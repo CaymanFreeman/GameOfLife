@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use rand::prelude::ThreadRng;
-use simple::Window;
+use simple::{Rect, Window};
 
 #[derive(Clone, Debug)]
 pub enum SurfaceType {
@@ -57,8 +57,8 @@ impl Clone for Simulation {
         Simulation {
             seed: self.seed.clone(),
             surface_type: self.surface_type.clone(),
-            rows: self.rows.clone(),
-            columns: self.columns.clone(),
+            rows: self.rows,
+            columns: self.columns,
             generation: self.generation.clone(),
             generation_iteration: self.generation_iteration,
             save_history: self.save_history.clone(),
@@ -331,16 +331,44 @@ impl SimulationBuilder {
 impl Simulation {
 
     fn draw_cell_grid(&mut self) {
-
+        let window_data: &mut SimulationWindowData = self.window_data.as_mut().unwrap();
+        window_data.window.set_color(0, 0, 0, 255);
+        let line_thickness = 5;
+        let cell_width: u16 = window_data.cell_width;
+        let cell_height: u16 = window_data.cell_height;
+        for column in 1..self.columns {
+            window_data.window.fill_rect(Rect::new(((column * cell_width) - 2) as i32, 0, line_thickness, window_data.window_height as u32));
+        }
+        for row in 1..self.rows {
+            window_data.window.fill_rect(Rect::new(0, ((row * cell_height) - 2) as i32, window_data.window_width as u32, line_thickness));
+        }
     }
 
     fn draw_alive_cells(&mut self) {
-
+        let window_data: &mut SimulationWindowData = self.window_data.as_mut().unwrap();
+        window_data.window.set_color(255, 255, 255, 255);
+        window_data.window.fill_rect(Rect::new(0, 0, window_data.window_width as u32, window_data.window_height as u32));
+        let cell_color: (u8, u8, u8, u8) = window_data.cell_color;
+        let cell_red: u8 = cell_color.0;
+        let cell_green: u8 = cell_color.1;
+        let cell_blue: u8 = cell_color.2;
+        let cell_alpha: u8 = cell_color.3;
+        window_data.window.set_color(cell_red, cell_green, cell_blue, cell_alpha);
+        let cell_width: u16 = window_data.cell_width;
+        let cell_height: u16 = window_data.cell_height;
+        for cell in &self.generation {
+            if cell.is_alive() {
+                let x: i32 = (cell.column * cell_width) as i32;
+                let y: i32 = (cell.row * cell_height) as i32;
+                window_data.window.fill_rect(Rect::new(x, y, cell_width as u32, cell_height as u32));
+            }
+        }
     }
 
-    pub fn draw_generation(&mut self) {
+    fn draw_generation(&mut self) {
         self.draw_alive_cells();
         self.draw_cell_grid();
+        self.window_data.as_mut().unwrap().window.next_frame();
     }
 
     pub(crate) fn get_cell(&self, row: u16, column: u16) -> Cell {

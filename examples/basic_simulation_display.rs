@@ -6,7 +6,6 @@ fn main() {
     let rows: u16 = 10;
     let columns: u16 = 15;
     let mut active_simulation: Simulation = SimulationBuilder::new()
-        .maximum_saves(1000000)
         .rows(rows)
         .columns(columns)
         .surface_type(SurfaceType::Rectangle)
@@ -16,8 +15,8 @@ fn main() {
         .build()
         .unwrap();
 
-    for _i in 0..5 {
+    for _i in 0..15 {
         active_simulation.simulate_generation();
-        sleep(Duration::from_secs(3));
+        sleep(Duration::from_secs(1));
     }
 }
