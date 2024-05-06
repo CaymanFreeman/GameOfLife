@@ -13,7 +13,6 @@ fn main() {
             .rows(rows)
             .columns(columns)
             .surface_type(SurfaceType::Rectangle)
-            .seed(random_seed_string(rows, columns))
             .build()
             .unwrap();
 
@@ -23,29 +22,29 @@ fn main() {
             active_simulation.simulate_generation();
             still_or_period = active_simulation.is_still();
             for i in 2..=active_simulation.maximum_saves {
-                still_or_period = still_or_period || active_simulation.is_period(i as usize);
+                still_or_period = still_or_period || active_simulation.has_period(i as usize);
                 if still_or_period {
                     break;
                 }
             }
         }
+        let iterations = active_simulation.generation_iteration - 1;
         if active_simulation.is_still() {
-            println!("\nSimulation has become still, it lasted for {} generations.", active_simulation.generation_iteration - 1);
+            println!("\nSimulation has become still, it lasted for {} generations.", iterations);
         } else {
-            let periods = 2..=active_simulation.maximum_saves;
-            for period in periods {
-                if active_simulation.is_period(period as usize) {
-                    println!("\nSimulation has a period of {}, it lasted for {} generations.", period, active_simulation.generation_iteration - 1);
+            for period in 2..=active_simulation.maximum_saves {
+                if active_simulation.has_period(period as usize) {
+                    println!("\nSimulation has a period of {}, it lasted for {} generations.", period, iterations);
                     break;
                 }
             }
         }
-        if active_simulation.clone().generation_iteration - 1 > active_simulation.maximum_saves {
+        if iterations > active_simulation.maximum_saves {
             println!("\nThe maximum generation limit of {} has been recorded, stopping all simulations.", active_simulation.maximum_saves);
             break;
         }
-        if active_simulation.clone().generation_iteration - 1 > fittest_generations {
-            fittest_generations = active_simulation.generation_iteration - 1;
+        if iterations > fittest_generations {
+            fittest_generations = iterations;
             fittest_seed = active_simulation.seed;
         }
     }
