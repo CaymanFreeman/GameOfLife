@@ -20,9 +20,11 @@ pub struct Cell {
     pub(crate) column: u16,
 }
 
-/// The character that represents a cell with an `Alive` `CellState` in string representations of a generation.
+/// The character that represents a cell with an `Alive` `CellState` in string
+/// representations of a generation.
 pub const ALIVE_CHAR: char = '*';
-/// The character that represents a cell with a `Dead` `CellState` in string representations of a generation.
+/// The character that represents a cell with a `Dead` `CellState` in string
+/// representations of a generation.
 pub const DEAD_CHAR: char = '-';
 
 impl Cell {

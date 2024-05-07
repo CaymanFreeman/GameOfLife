@@ -2,8 +2,8 @@
 //!
 //! # Example
 //! ```rust,no_run
-//! use game_of_life::simulation::{Simulation, SurfaceType};
-//! use game_of_life::simulation_builder::SimulationBuilder;
+//! use simple_game_of_life::simulation::{Simulation, SurfaceType};
+//! use simple_game_of_life::simulation_builder::SimulationBuilder;
 //!
 //! let mut simulation: Simulation = SimulationBuilder::new()
 //!     .rows(4) // 4 rows high
@@ -305,6 +305,34 @@ impl SimulationBuilder {
     }
 
     /// Builds the `Simulation` instance based on the configured settings.
+    ///
+    /// # Description
+    /// This function is responsible for creating a new `Simulation` instance with the specified
+    /// configuration settings. It validates the provided parameters and constructs the
+    /// simulation accordingly.
+    ///
+    /// The function performs the following steps:
+    ///
+    /// 1. Determine the values for `rows`, `columns`, and `seed` based on the provided input.
+    /// If any of these values are missing or invalid, an error is returned.
+    /// 2. If the simulation is configured to display in a window, calculate the window
+    /// dimensions and cell dimensions based on the provided values. If the required dimensions
+    /// are not provided, an error is returned.
+    /// 3. Create a `HashSet` of `Cell` instances representing the initial generation by parsing
+    /// the seed string using the `generation_from_string` function.
+    /// 4. Create a `SimulationWindowData` instance if the simulation is configured to display in
+    /// a window, containing information about the window, cell dimensions, colors,
+    /// and grid lines.
+    /// 5. Create a new `Simulation` instance with the calculated values and the initial
+    /// generation.
+    /// 6. If the simulation is configured to display in a window, call the `draw_generation`
+    /// method to render the initial generation.
+    ///
+    /// # Returns
+    /// This function returns a `Result` containing either a `Simulation` instance or a `String`
+    /// representing an error message. The error message is returned if any of the provided
+    /// parameters are invalid or if there are any issues during the construction of the
+    /// simulation.
     pub fn build(self) -> Result<Simulation, String> {
         let (rows, columns, seed) = match (self.rows, self.columns, self.seed) {
             (Some(rows), Some(columns), Some(seed)) => (rows, columns, seed),

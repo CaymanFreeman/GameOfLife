@@ -1,5 +1,5 @@
-use game_of_life::simulation::{Simulation, SurfaceType};
-use game_of_life::simulation_builder::SimulationBuilder;
+use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation_builder::SimulationBuilder;
 use std::time::Duration;
 
 fn main() {

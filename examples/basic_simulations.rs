@@ -1,5 +1,5 @@
-use game_of_life::simulation::{Simulation, SurfaceType};
-use game_of_life::simulation_builder::SimulationBuilder;
+use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation_builder::SimulationBuilder;
 use std::time::Duration;
 
 fn main() {
@@ -38,8 +38,10 @@ fn main() {
         simulation_with_print.simulate_generation()
     }
 
+    // We are putting the simulation in a separate scope so that it is properly deleted before creating the next simulation
+    // It is preferred to reset simulations with one of the three reset functions instead of creating new simulations
+
     {
-        // Putting the simulation in a separate scope so that it is properly deleted before creating the next simulation
         // This simulation will be a 10x15 horizontal loop with a random seed, will only wrap left/right, and will have a window display instead of printing to console
         let mut simulation_with_display_horizontal: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
             .rows(10) // 10 rows high
