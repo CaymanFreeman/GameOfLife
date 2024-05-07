@@ -2,7 +2,7 @@
 
 This library assists with creating simple Game of Life simulations. It is based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life), invented by John Conway in 1970.
 
-The main diferences with this library is that there is no infinite plane, but four different finite surfaces defined through the `SurfaceType` enum.
+The main difference with this library is that there is no infinite plane, but four different finite surfaces defined through the `SurfaceType` enum.
 
 This is my first Rust project and picked simulating the Game of Life to learn the language.
 
