@@ -435,7 +435,9 @@ impl SimulationBuilder {
             print: self.print,
             window_data,
         };
-        simulation.draw_generation();
+        if simulation.display {
+            simulation.draw_generation();
+        }
         Ok(simulation)
     }
 }
