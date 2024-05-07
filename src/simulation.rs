@@ -1,58 +1,87 @@
-use crate::cell;
-use crate::cell::Cell;
-use crate::cell::CellState::{Alive, Dead};
-use crate::simulation::SurfaceType::*;
-use rand::{thread_rng, Rng};
+//! Modeling and live manipulation for Game of Life simulations.
+//!
+//! # Example
+//! ```rust,no_run
+//! use game_of_life::simulation::{Simulation, SurfaceType};
+//! use game_of_life::simulation_builder::SimulationBuilder;
+//!
+//! let mut simulation: Simulation = SimulationBuilder::new()
+//!     .rows(4) // 4 rows high
+//!     .columns(9) // 9 columns wide
+//!     .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+//!     .print(false) // Declaring that the simulation should not print generations (automatically)
+//!     .display(false) // Declaring that the simulation should not display the generations in a window
+//!     .cell_size(50) // Cell size of 50x50 pixels
+//!     .build() // Build into a simulation
+//!     .unwrap();
+//!
+//! // Simulate an iteration and print the generation
+//! simulation.simulate_generation();
+//! println!("{}", simulation);
+//!
+//! // Simulate 15 iterations and print the generation
+//! simulation.simulate_generations(15);
+//! println!("{}", simulation);
+//!
+//! // Reset the simulation to 0 iterations with a new random seed
+//! simulation.reset_to_rand()
+//! ```
+
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
-use rand::prelude::ThreadRng;
-use simple::{Rect, Window};
+use std::iter::repeat;
+use std::thread::sleep;
+use std::time::Duration;
 
+use crate::cell::CellState::{ALIVE, DEAD};
+use crate::cell::{Cell, ALIVE_CHAR, DEAD_CHAR};
+
+use rand::{thread_rng, Rng, ThreadRng};
+
+use crate::simulation::SurfaceType::*;
+use crate::simulation_window::SimulationWindowData;
+
+/// Represents the surface type of a simulation (how wrapping will behave).
 #[derive(Clone, Debug)]
 pub enum SurfaceType {
+    /// A spherical surface where cells wrap around on every edge.
     Ball,
+    /// A cylindrical surface where cells wrap around horizontally (left/right).
     HorizontalLoop,
+    /// A cylindrical surface where cells wrap around vertically (top/bottom).
     VerticalLoop,
+    /// A rectangular surface with no wrapping.
     Rectangle,
 }
 
-struct SimulationWindowData {
-    window: Window,
-    window_width: u16,
-    window_height: u16,
-    window_title: String,
-    cell_width: u16,
-    cell_height: u16,
-    cell_color: (u8, u8, u8, u8),
-}
-
-impl Clone for SimulationWindowData {
-    fn clone(&self) -> Self {
-        SimulationWindowData {
-            window_width: self.window_width,
-            window_height: self.window_height,
-            window_title: self.window_title.clone(),
-            window: Window::new(&*self.window_title, self.window_width, self.window_height),
-            cell_width: self.cell_width,
-            cell_height: self.cell_height,
-            cell_color: self.cell_color,
-        }
-    }
-}
-
+/// Represents a simulation of the Game of Life.
 pub struct Simulation {
+    /// The initial seed string used to generate the simulation.
     pub seed: String,
+    /// The surface type (affects wrapping) of the simulation.
     pub surface_type: SurfaceType,
+    /// The number of rows in the simulation grid.
     pub rows: u16,
+    /// The number of columns in the simulation grid.
     pub columns: u16,
+    /// The current generation of cells in the simulation.
     pub generation: HashSet<Cell>,
+    /// The current iteration or generation number of the simulation.
     pub generation_iteration: u128,
+    /// A history of previous generations, used for rolling back the simulation.
     pub save_history: Vec<HashSet<Cell>>,
+    /// The maximum number of generations to retain in the save history.
     pub maximum_saves: u128,
-    window_data: Option<SimulationWindowData>,
+    /// A flag indicating whether the simulation should be displayed in a window.
+    pub display: bool,
+    /// A flag indicating whether the simulation should be printed to the console.
+    pub print: bool,
+    /// Data related to the display window for the simulation, if applicable.
+    pub(crate) window_data: Option<SimulationWindowData>,
 }
 
 impl Clone for Simulation {
+    /// Creates a deep clone of the `Simulation` instance.
     fn clone(&self) -> Self {
         Simulation {
             seed: self.seed.clone(),
@@ -63,12 +92,15 @@ impl Clone for Simulation {
             generation_iteration: self.generation_iteration,
             save_history: self.save_history.clone(),
             maximum_saves: self.maximum_saves,
+            display: self.display,
+            print: self.print,
             window_data: self.window_data.clone(),
         }
     }
 }
 
 impl Display for Simulation {
+    /// Renders the string representation of the current generation.
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         if self.generation_iteration == 0 {
             write!(f, "SEED\n")?;
@@ -85,301 +117,17 @@ impl Display for Simulation {
     }
 }
 
-pub struct SimulationBuilder {
-    rows: Option<u16>,
-    columns: Option<u16>,
-    surface_type: SurfaceType,
-    seed: Option<String>,
-    maximum_saves: u128,
-    cell_width: Option<u16>,
-    cell_height: Option<u16>,
-    cell_color_red: u8,
-    cell_color_green: u8,
-    cell_color_blue: u8,
-    cell_color_alpha: u8,
-    window_width: Option<u16>,
-    window_height: Option<u16>,
-    window_title: String,
-    has_display: bool,
-}
-
-impl Default for SimulationBuilder {
-    fn default() -> Self {
-        Self {
-            rows: None,
-            columns: None,
-            surface_type: Rectangle,
-            seed: None,
-            maximum_saves: 100,
-            cell_width: None,
-            cell_height: None,
-            cell_color_red: 255,
-            cell_color_green: 255,
-            cell_color_blue: 0,
-            cell_color_alpha: 255,
-            window_width: None,
-            window_height: None,
-            window_title: String::from("Game of Life"),
-            has_display: false,
-        }
-    }
-}
-
-impl SimulationBuilder {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn has_display(mut self, has_display: bool) -> Self {
-        self.has_display = has_display;
-        self
-    }
-
-    pub fn window_width(mut self, window_width: u16) -> Self {
-        self.window_width = Some(window_width);
-        self
-    }
-
-    pub fn window_height(mut self, window_height: u16) -> Self {
-        self.window_height = Some(window_height);
-        self
-    }
-
-    pub fn window_size(mut self, window_size: u16) -> Self {
-        self.window_width = Some(window_size);
-        self.window_height = Some(window_size);
-        self
-    }
-
-    pub fn window_title(mut self, window_title: &str) -> Self {
-        self.window_title = String::from(window_title);
-        self
-    }
-
-    pub fn cell_width(mut self, cell_width: u16) -> Self {
-        self.cell_width = Some(cell_width);
-        self
-    }
-
-    pub fn cell_height(mut self, cell_height: u16) -> Self {
-        self.cell_height = Some(cell_height);
-        self
-    }
-
-    pub fn cell_size(mut self, cell_size: u16) -> Self {
-        self.cell_width = Some(cell_size);
-        self.cell_height = Some(cell_size);
-        self
-    }
-
-    pub fn cell_color(mut self, cell_color_red: u8, cell_color_green: u8, cell_color_blue: u8, cell_color_alpha: u8) -> Self {
-        self.cell_color_red = cell_color_red;
-        self.cell_color_green = cell_color_green;
-        self.cell_color_blue = cell_color_blue;
-        self.cell_color_alpha = cell_color_alpha;
-        self
-    }
-
-    pub fn cell_color_red(mut self, cell_color_red: u8) -> Self {
-        self.cell_color_red = cell_color_red;
-        self
-    }
-
-    pub fn cell_color_green(mut self, cell_color_green: u8) -> Self {
-        self.cell_color_green = cell_color_green;
-        self
-    }
-
-    pub fn cell_color_blue(mut self, cell_color_blue: u8) -> Self {
-        self.cell_color_blue = cell_color_blue;
-        self
-    }
-
-    pub fn cell_color_alpha(mut self, cell_color_alpha: u8) -> Self {
-        self.cell_color_alpha = cell_color_alpha;
-        self
-    }
-
-    pub fn rows(mut self, rows: u16) -> Self {
-        self.rows = Some(rows);
-        self
-    }
-
-    pub fn columns(mut self, columns: u16) -> Self {
-        self.columns = Some(columns);
-        self
-    }
-
-    pub fn surface_type(mut self, surface_type: SurfaceType) -> Self {
-        self.surface_type = surface_type;
-        self
-    }
-
-    pub fn seed(mut self, seed: String) -> Self {
-        self.seed = Some(seed);
-        self
-    }
-
-    pub fn maximum_saves(mut self, maximum_saves: u128) -> Self {
-        self.maximum_saves = maximum_saves;
-        self
-    }
-
-    pub fn build(self) -> Result<Simulation, String> {
-        let (rows, columns, seed) = match (self.rows, self.columns, self.seed) {
-            (Some(rows), Some(columns), Some(seed)) => (rows, columns, seed),
-            (Some(rows), Some(columns), None) => (rows, columns, random_seed_string(rows, columns)),
-            (Some(rows), None, Some(seed)) => {
-                let seed_length = seed.len() as u16;
-                if seed_length % rows == 0 {
-                    (rows, seed_length / rows, seed)
-                } else {
-                    return Err(format!(
-                        "The provided seed of \"{}\", must be divisible by the number of rows: {}",
-                        seed, rows
-                    ));
-                }
-            }
-            (None, Some(columns), Some(seed)) => {
-                let seed_length: u16 = seed.len() as u16;
-                if seed_length % columns == 0 {
-                    (seed_length / columns, columns, seed)
-                } else {
-                    return Err(format!(
-                        "The provided seed of \"{}\", must be divisible by the number of columns: {}",
-                        seed, columns
-                    ));
-                }
-            }
-            (None, None, Some(seed)) => {
-                let seed_length: f32 = seed.len() as f32;
-                let sqrt: f32 = seed_length.sqrt();
-                let rounded_sqrt: f32 = sqrt.round();
-                if (rounded_sqrt * rounded_sqrt) as usize == seed.len() {
-                    let sqrt = rounded_sqrt as u16;
-                    (sqrt, sqrt, seed)
-                } else {
-                    return Err(format!(
-                        "The provided seed of \"{}\", must be of a square size (has an integer square root)",
-                        seed
-                    ));
-                }
-            }
-            (Some(_), None, None) | (None, Some(_), None) => {
-                return Err(
-                    "Both rows and columns must be provided if no seed is provided".to_string(),
-                );
-            }
-            (None, None, None) => {
-                return Err(
-                    "One of the following must be provided: rows, columns, or seed".to_string(),
-                );
-            }
-        };
-
-        let window_data: Option<SimulationWindowData> = if self.has_display {
-            let (window_width, window_height, cell_width, cell_height) = match (
-                self.window_width,
-                self.window_height,
-                self.cell_width,
-                self.cell_height,
-            ) {
-                (Some(window_width), Some(window_height), None, None) => {
-                    let cell_width: u16 = window_width / columns;
-                    let cell_height: u16 = window_height / rows;
-                    (window_width, window_height, cell_width, cell_height)
-                }
-                (None, None, Some(cell_width), Some(cell_height)) => {
-                    let window_width: u16 = cell_width * columns;
-                    let window_height: u16 = cell_height * rows;
-                    (window_width, window_height, cell_width, cell_height)
-                }
-                (Some(_window_width), Some(_window_height), Some(_cell_width), Some(_cell_height)) => {
-                    return Err("Only cell dimensions or window dimensions can be provided, not both".to_string());
-                }
-                _ => {
-                    return Err("If the simulation has a display, a cell or window size must be provided".to_string());
-                }
-            };
-            Some(SimulationWindowData {
-                window_width,
-                window_height,
-                window_title: self.window_title.clone(),
-                cell_width,
-                cell_height,
-                window: Window::new(&*self.window_title, window_width, window_height),
-                cell_color: (self.cell_color_red, self.cell_color_green, self.cell_color_blue, self.cell_color_alpha),
-            })
-        } else {
-            None
-        };
-
-        Ok(Simulation {
-            seed: seed.clone(),
-            surface_type: self.surface_type,
-            rows,
-            columns,
-            generation: string_to_generation(seed, columns).unwrap(),
-            generation_iteration: 0,
-            save_history: Vec::new(),
-            maximum_saves: self.maximum_saves,
-            window_data,
-        })
-    }
-}
-
 impl Simulation {
-
-    fn draw_cell_grid(&mut self) {
-        let window_data: &mut SimulationWindowData = self.window_data.as_mut().unwrap();
-        window_data.window.set_color(0, 0, 0, 255);
-        let line_thickness = 5;
-        let cell_width: u16 = window_data.cell_width;
-        let cell_height: u16 = window_data.cell_height;
-        for column in 1..self.columns {
-            window_data.window.fill_rect(Rect::new(((column * cell_width) - 2) as i32, 0, line_thickness, window_data.window_height as u32));
-        }
-        for row in 1..self.rows {
-            window_data.window.fill_rect(Rect::new(0, ((row * cell_height) - 2) as i32, window_data.window_width as u32, line_thickness));
-        }
-    }
-
-    fn draw_alive_cells(&mut self) {
-        let window_data: &mut SimulationWindowData = self.window_data.as_mut().unwrap();
-        window_data.window.set_color(255, 255, 255, 255);
-        window_data.window.fill_rect(Rect::new(0, 0, window_data.window_width as u32, window_data.window_height as u32));
-        let cell_color: (u8, u8, u8, u8) = window_data.cell_color;
-        let cell_red: u8 = cell_color.0;
-        let cell_green: u8 = cell_color.1;
-        let cell_blue: u8 = cell_color.2;
-        let cell_alpha: u8 = cell_color.3;
-        window_data.window.set_color(cell_red, cell_green, cell_blue, cell_alpha);
-        let cell_width: u16 = window_data.cell_width;
-        let cell_height: u16 = window_data.cell_height;
-        for cell in &self.generation {
-            if cell.is_alive() {
-                let x: i32 = (cell.column * cell_width) as i32;
-                let y: i32 = (cell.row * cell_height) as i32;
-                window_data.window.fill_rect(Rect::new(x, y, cell_width as u32, cell_height as u32));
-            }
-        }
-    }
-
-    fn draw_generation(&mut self) {
-        self.draw_alive_cells();
-        self.draw_cell_grid();
-        self.window_data.as_mut().unwrap().window.next_frame();
-    }
-
-    pub(crate) fn get_cell(&self, row: u16, column: u16) -> Cell {
-        let mut cell: Cell = Cell::new_alive(row, column);
+    /// Returns the cell at the given row and column.
+    fn get_cell(&self, row: u16, column: u16) -> Cell {
+        let mut cell: Cell = Cell::new(ALIVE, row, column);
         if !self.generation.contains(&cell) {
-            cell.state = Dead;
+            cell.state = DEAD;
         }
         return cell;
     }
 
-    // Behold, efficiency
+    /// Counts the number of alive neighbor cells for the given cell.
     fn get_alive_neighbors(&self, cell: Cell) -> u8 {
         let origin_row: u16 = cell.row;
         let origin_column: u16 = cell.column;
@@ -600,13 +348,15 @@ impl Simulation {
         count
     }
 
-    pub fn save_generation(&mut self) {
+    /// Saves the current generation to the save history.
+    fn save_generation(&mut self) {
         if self.save_history.len() == self.maximum_saves as usize {
             self.save_history.remove(0);
         }
         self.save_history.push(self.generation.clone());
     }
 
+    /// Rolls back the simulation by the specified number of generations.
     pub fn rollback_generations(&mut self, iterations: u128) {
         if iterations == 0 {
             return;
@@ -624,10 +374,12 @@ impl Simulation {
         }
     }
 
+    /// Rolls back the simulation by one generation.
     pub fn rollback_generation(&mut self) {
         self.rollback_generations(1)
     }
 
+    /// Simulates the specified number of generations.
     pub fn simulate_generations(&mut self, iterations: u128) {
         if iterations == 0 {
             return;
@@ -648,7 +400,7 @@ impl Simulation {
                         }
                     } else {
                         if alive_neighbors == 3 {
-                            cell.state = Alive;
+                            cell.state = ALIVE;
                             new_generation.insert(cell);
                         }
                     }
@@ -659,47 +411,93 @@ impl Simulation {
             self.generation = new_generation;
             self.generation_iteration += 1;
         }
-        if self.window_data.is_some() {
+        if self.display {
             self.draw_generation()
+        }
+        if self.print {
+            println!("{}", self)
         }
     }
 
+    /// Simulates one generation.
     pub fn simulate_generation(&mut self) {
         self.simulate_generations(1)
     }
 
-    pub fn is_still(&self) -> bool {
-        self.has_period(1)
+    /// Simulates generations continuously with a specified cooldown period.
+    pub fn simulate_continuous_generations(
+        &mut self,
+        cooldown: Duration,
+        stop_when_finished: bool,
+    ) {
+        loop {
+            self.simulate_generation();
+            if stop_when_finished && self.is_finished() {
+                break;
+            }
+            sleep(cooldown)
+        }
     }
 
-    pub fn has_period(&self, period: usize) -> bool {
+    /// Returns the count of alive cells in the current generation.
+    pub fn alive_count(&self) -> u64 {
+        self.generation.len() as u64
+    }
+
+    /// Returns the proportion of alive cells in the current generation.
+    pub fn alive_proportion(&self) -> f64 {
+        self.alive_count() as f64 / self.area() as f64
+    }
+
+    /// Returns the total area (number of cells) in the simulation.
+    pub fn area(&self) -> u16 {
+        self.rows * self.columns
+    }
+
+    /// Resets the simulation to the initial seed.
+    pub fn reset(&mut self) {
+        let seed: String = self.seed.clone();
+        self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
+        self.generation_iteration = 0;
+    }
+
+    /// Resets the simulation to the specified seed.
+    pub fn reset_to(&mut self, seed: &str) {
+        self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
+        self.generation_iteration = 0;
+    }
+
+    /// Resets the simulation to a random seed.
+    pub fn reset_to_rand(&mut self) {
+        let seed: String = random_seed(self.rows, self.columns);
+        self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
+        self.generation_iteration = 0;
+    }
+
+    /// Returns true if the simulation is in a still state (a period of 1).
+    pub fn is_still(&self) -> bool {
+        self.is_periodic(1)
+    }
+
+    /// Returns true if the simulation is in a periodic state with the specified period.
+    pub fn is_periodic(&self, period: usize) -> bool {
         self.save_history.len() >= period
             && self.generation == self.save_history[self.save_history.len() - (period)]
     }
 
-    pub fn as_seed(&self) -> Simulation {
-        let mut seed_simulation = self.clone();
-        seed_simulation.generation = string_to_generation(self.seed.clone(), self.columns.clone()).unwrap();
-        seed_simulation.generation_iteration = 0;
-        seed_simulation
+    /// Returns true if the simulation has reached a finished state (has any periodic state).
+    pub fn is_finished(&self) -> bool {
+        self.save_history.contains(&self.generation)
     }
 
+    /// Returns the string representation of the current generation.
     pub fn generation_string(&self) -> String {
-        let mut current_generation = String::new();
-        let mut row = 0;
-        while row < self.rows {
-            let mut column = 0;
-            while column < self.columns {
-                current_generation.push(self.get_cell(row.clone(), column.clone()).as_char());
-                column = column + 1;
-            }
-            row = row + 1;
-        }
-        current_generation
+        string_from_generation(self.generation.clone(), self.rows, self.columns)
     }
 }
 
-pub fn string_to_generation(seed: String, columns: u16) -> Result<HashSet<Cell>, String> {
+/// Converts a string seed into a `HashSet` of `Cell` instances.
+pub fn generation_from_string(seed: String, columns: u16) -> Result<HashSet<Cell>, String> {
     let mut generation: HashSet<Cell> = HashSet::new();
     let values: Vec<char> = seed.chars().collect();
     for i in 0..values.len() {
@@ -708,26 +506,36 @@ pub fn string_to_generation(seed: String, columns: u16) -> Result<HashSet<Cell>,
         let column_index: u16 = index % columns.clone();
         let value: char = values.get(i).unwrap().clone();
         match value {
-            cell::ALIVE_CHAR => {
-                generation.insert(Cell::new_alive(row_index, column_index));
+            ALIVE_CHAR => {
+                generation.insert(Cell::new(ALIVE, row_index, column_index));
             }
-            cell::DEAD_CHAR => {}
-            _ => return Err(format!("Unexpected seed character: {}", value)),
+            DEAD_CHAR => {}
+            _ => {
+                return Err(format!(
+                    "Unexpected seed character of \'{}\', seeds must only contain \'{}\' or \'{}\'",
+                    value, DEAD_CHAR, ALIVE_CHAR
+                ));
+            }
         };
     }
     Ok(generation)
 }
 
-pub fn random_seed_string(rows: u16, columns: u16) -> String {
+/// Converts a `HashSet` of `Cell` instances into a `String` representation.
+pub fn string_from_generation(generation: HashSet<Cell>, rows: u16, columns: u16) -> String {
+    let mut generation_characters: Vec<char> =
+        repeat(DEAD_CHAR).take((rows * columns) as usize).collect();
+    for cell in generation {
+        generation_characters[(cell.row * columns + cell.column) as usize] = ALIVE_CHAR;
+    }
+    generation_characters.iter().collect()
+}
+
+/// Generates a random seed `String` for the specified number of rows and columns.
+pub fn random_seed(rows: u16, columns: u16) -> String {
     let length: usize = (rows * columns).into();
     let mut rng: ThreadRng = thread_rng();
     (0..length)
-        .map(|_| {
-            if rng.gen() {
-                cell::ALIVE_CHAR
-            } else {
-                cell::DEAD_CHAR
-            }
-        })
+        .map(|_| if rng.gen() { ALIVE_CHAR } else { DEAD_CHAR })
         .collect()
 }

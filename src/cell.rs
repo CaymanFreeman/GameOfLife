@@ -1,45 +1,49 @@
-use std::hash::Hash;
-use crate::cell::CellState::*;
+use crate::cell::CellState::{ALIVE, DEAD};
 
+/// Represents the state of a cell.
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub enum CellState {
-    Dead,
-    Alive,
+pub(crate) enum CellState {
+    /// A dead cell.
+    DEAD,
+    /// An alive cell.
+    ALIVE,
 }
 
+/// Represents a single cell in a `Simulation`.
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Cell {
-    pub state: CellState,
-    pub row: u16,
-    pub column: u16,
+    /// The state of the cell (alive or dead).
+    pub(crate) state: CellState,
+    /// The row index of the cell.
+    pub(crate) row: u16,
+    /// The column index of the cell.
+    pub(crate) column: u16,
 }
 
+/// The character that represents a cell with an `Alive` `CellState` in string representations of a generation.
 pub const ALIVE_CHAR: char = '*';
+/// The character that represents a cell with a `Dead` `CellState` in string representations of a generation.
 pub const DEAD_CHAR: char = '-';
 
 impl Cell {
-
-    pub fn is_alive(&self) -> bool {
-        if self.state == Alive {
-            return true
+    /// Returns true if the cell is alive, false otherwise.
+    pub(crate) fn is_alive(&self) -> bool {
+        if self.state == ALIVE {
+            return true;
         }
-        return false
+        return false;
     }
 
-    pub fn as_char(&self) -> char {
-        match self.state {
-            Alive => { ALIVE_CHAR }
-            Dead => { DEAD_CHAR }
+    /// Returns the character representation of the cell's state.
+    pub(crate) fn as_char(&self) -> char {
+        match self.state.clone() {
+            ALIVE => ALIVE_CHAR,
+            DEAD => DEAD_CHAR,
         }
     }
 
-    pub fn new(state: CellState, row: u16, column: u16) -> Result<Cell, String> {
-        Ok(Cell {
-            state,
-            row,
-            column
-        })
+    /// Creates a new `Cell` instance with the given state, row, and column.
+    pub(crate) fn new(state: CellState, row: u16, column: u16) -> Cell {
+        Cell { state, row, column }
     }
-
-    pub fn new_alive(row: u16, column: u16) -> Cell { Self::new(Alive, row, column).unwrap() }
 }
