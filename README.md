@@ -11,7 +11,7 @@ This is my first Rust project and picked simulating the Game of Life to learn th
 This library depends on the [simple](https://docs.rs/simple/latest/simple/index.html) graphics library, which itself depends on [SDL](https://github.com/libsdl-org/SDL) and [SDL Image](https://github.com/libsdl-org/SDL_image). You will need to install these if you would like to use display windows.
 
 ## Documentation
-The documentation for this project is compiled with [rustdoc](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html) and can be found at the [package's website]().
+The documentation for this project is compiled with [rustdoc](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html) and can be found at the [package's website](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/).
 
 ## Getting Started
 
@@ -43,25 +43,25 @@ Each of these examples will use the same 7x7 seed with a window display to show 
 
 ### Rectangle
 
-The [Rectangle]() is the simplest surface type where there is no wrapping, which means all edges are "dead zones".
+The [Rectangle](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/simulation/enum.SurfaceType.html#variant.Rectangle) is the simplest surface type where there is no wrapping, which means all edges are "dead zones".
 
 ![Rectangle Surface Demonstration GIF](https://i.imgur.com/Z7Lyseq.gif)
 
 ### Ball
 
-The [Ball]() is a surface type where there are no "dead zones". Every side of the simulation will wrap around to the opposite side.
+The [Ball](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/simulation/enum.SurfaceType.html#variant.Ball) is a surface type where there are no "dead zones". Every side of the simulation will wrap around to the opposite side.
 
 ![Ball Surface Demonstration GIF](https://i.imgur.com/bO1AHsA.gif)
 
 ### Horizontal Loop
 
-The [Horizontal Loop]() is a surface type where the top and bottom of the simulation are "dead zones" and the left and right will wrap around to each other. This is the same behavior as the video game [Pac-Man](https://en.wikipedia.org/wiki/Pac-Man).
+The [Horizontal Loop](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/simulation/enum.SurfaceType.html#variant.HorizontalLoop) is a surface type where the top and bottom of the simulation are "dead zones" and the left and right will wrap around to each other. This is the same behavior as the video game [Pac-Man](https://en.wikipedia.org/wiki/Pac-Man).
 
 ![Horizontal Loop Surface Demonstration GIF](https://i.imgur.com/rR0HQiE.gif)
 
 ### Vertical Loop
 
-The [Vertical Loop]() is a surface type where the left and right of the simulation are "dead zones" and the top and bottom will wrap around to each other.
+The [Vertical Loop](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/simulation/enum.SurfaceType.html#variant.VerticalLoop) is a surface type where the left and right of the simulation are "dead zones" and the top and bottom will wrap around to each other.
 
 ![Vertical Loop Surface Demonstration GIF](https://i.imgur.com/yKB6Azk.gif)
 
@@ -88,7 +88,7 @@ println!("{}", simulation)
 
 There is also the option to display the simulation in a more colorful way in a window like you've seen in the demonstrations. Unlike printing, the `.display(true)` flag is required to view a simulation with a window. After each iteration of a simulation, the window will automatically update the next frame to display the current generation of cells.
 
-The window display is customizable through the different color and size options. Each customization flag can be viewed on the `SimulationBuilder`'s [documentation page](), but there are some examples of what you can do below.
+The window display is customizable through the different color and size options. Each customization flag can be viewed on the `SimulationBuilder`'s [documentation page](https://docs.rs/simple_game_of_life/1.0.0/simple_game_of_life/simulation_builder/struct.SimulationBuilder.html), but there are some examples of what you can do below.
 
 ```Rust {id="customization-demonstration-1" data-filename="readme.md"}
 .cell_color(255, 0, 0, 255) // Red cells
