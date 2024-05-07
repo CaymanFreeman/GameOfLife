@@ -128,6 +128,7 @@ impl Simulation {
     }
 
     /// Counts the number of alive neighbor cells for the given cell.
+    /// "If it ain't broke"
     fn get_alive_neighbors(&self, cell: Cell) -> u8 {
         let origin_row: u16 = cell.row;
         let origin_column: u16 = cell.column;

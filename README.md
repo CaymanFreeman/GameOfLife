@@ -1,10 +1,14 @@
 # Game of Life
 
-This library assists with creating simple Game of Life simulations. It is based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life), invented by John Conway in 1970. There is enough customization for an in-depth use of the library with minimal overhead to get to results faster.
+This library assists with creating simple Game of Life simulations. It is based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life), invented by John Conway in 1970.
 
-The main diferences with this library is that there is no infinite planes, only four different finite surfaces defined through the `SurfaceType` enum.
+The main diferences with this library is that there is no infinite plane, but four different finite surfaces defined through the `SurfaceType` enum.
 
 This is my first Rust project and picked simulating the Game of Life to learn the language.
+
+## Dependencies
+
+This library depends on the [simple](https://docs.rs/simple/latest/simple/index.html) graphics library, which itself depends on [SDL](https://github.com/libsdl-org/SDL) and [SDL Image](https://github.com/libsdl-org/SDL_image). You will need to install these if you would like to use display windows.
 
 ## Documentation
 The documentation for this project is compiled with [rustdoc](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html) and can be found at the [package's website]().
