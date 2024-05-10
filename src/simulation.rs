@@ -33,11 +33,13 @@ use std::iter::repeat;
 use std::thread::sleep;
 use std::time::Duration;
 
+use crate::rand::distributions::Distribution;
+use rand::distributions::Uniform;
+use rand::prelude::ThreadRng;
+use rand::thread_rng;
+
 use crate::cell::CellState::{ALIVE, DEAD};
 use crate::cell::{Cell, ALIVE_CHAR, DEAD_CHAR};
-
-use rand::{thread_rng, Rng, ThreadRng};
-
 use crate::simulation::SurfaceType::*;
 use crate::simulation_window::SimulationWindowData;
 
@@ -107,7 +109,7 @@ impl Display for Simulation {
     /// It is responsible for generating a textual representation of the current generation,
     /// which can be used for printing or displaying the simulation state.
     ///
-    /// The function writes the following information to the provided `Formatter`:
+    /// This function writes the following information to the provided `Formatter`:
     ///
     /// 1. If the current iteration is 0, it writes the string "SEED".
     /// 2. Otherwise, it writes the current iteration number.
@@ -168,11 +170,14 @@ impl Simulation {
     /// It considers all eight neighboring cells (top, bottom, left, right, and four diagonals)
     /// and counts how many of them are alive.
     ///
-    /// The function takes into account the surface type of the simulation to handle wrapping
+    /// This function takes into account the surface type of the simulation to handle wrapping
     /// behavior correctly.
     ///
+    /// To maintain the use of unsigned integers, this function is built to never
+    /// hold or calculate a negative number.
+    ///
     /// If the simulation has a wrapping surface type (e.g., `Ball`, `HorizontalLoop`,
-    /// `VerticalLoop`), the function adjusts the neighbor cell coordinates accordingly
+    /// `VerticalLoop`), this function adjusts the neighbor cell coordinates accordingly
     /// to wrap around the edges of the grid.
     ///
     /// # Arguments
@@ -181,6 +186,9 @@ impl Simulation {
     /// # Returns
     /// An `u8` value representing the number of alive neighbor cells surrounding the specified
     /// `Cell` instance.
+    ///
+    /// #
+    /// I don't remember how I came up with this function, but it works, and it haunts me.
     fn get_alive_neighbors(&self, cell: Cell) -> u8 {
         let origin_row: u16 = cell.row;
         let origin_column: u16 = cell.column;
@@ -408,7 +416,7 @@ impl Simulation {
     /// The save history is a vector that stores previous generations, allowing the simulation
     /// to be rolled back to a previous state if needed.
     ///
-    /// The function maintains a maximum number of saved generations specified by the
+    /// This function maintains a maximum number of saved generations specified by the
     /// `maximum_saves` field.
     ///
     /// When the save history reaches the maximum size, the oldest generation is removed before
@@ -425,24 +433,6 @@ impl Simulation {
     }
 
     /// Rolls back the simulation by the specified number of generations.
-    pub fn rollback_generations(&mut self, iterations: u128) {
-        if iterations == 0 {
-            return;
-        }
-        for _ in 0..iterations {
-            if let Some(previous_generation) = self.save_history.pop() {
-                self.generation = previous_generation;
-                self.generation_iteration -= 1;
-            } else {
-                break;
-            }
-        }
-        if self.window_data.is_some() {
-            self.draw_generation()
-        }
-    }
-
-    /// Rolls back the simulation by the specified number of generations.
     ///
     /// # Description
     /// This function allows you to undo a certain number of iterations in the simulation by
@@ -456,6 +446,24 @@ impl Simulation {
     ///
     /// # Arguments
     /// * `iterations` - The number of generations to roll back.
+    pub fn rollback_generations(&mut self, iterations: u128) {
+        if iterations == 0 {
+            return;
+        }
+        for _ in 0..iterations {
+            if let Some(previous_generation) = self.save_history.pop() {
+                self.generation = previous_generation;
+                self.generation_iteration -= 1;
+            } else {
+                break;
+            }
+        }
+        if self.display {
+            self.draw_generation()
+        }
+    }
+
+    /// Rolls back one generation.
     pub fn rollback_generation(&mut self) {
         self.rollback_generations(1)
     }
@@ -582,6 +590,7 @@ impl Simulation {
     /// window. You can not have multiple windows at once.
     pub fn reset_to(&mut self, seed: &str) {
         self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
+        self.seed = String::from(seed);
         self.generation_iteration = 0;
     }
 
@@ -592,7 +601,8 @@ impl Simulation {
     /// window. You can not have multiple windows at once.
     pub fn reset_to_rand(&mut self) {
         let seed: String = random_seed(self.rows, self.columns);
-        self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
+        self.generation = generation_from_string(String::from(seed.clone()), self.columns).unwrap();
+        self.seed = seed;
         self.generation_iteration = 0;
     }
 
@@ -608,7 +618,6 @@ impl Simulation {
     }
 
     /// Returns true if the simulation has reached a finished state (has any periodic state).
-
     pub fn is_finished(&self) -> bool {
         self.save_history.contains(&self.generation)
     }
@@ -626,7 +635,7 @@ impl Simulation {
 /// `HashSet` of `Cell` instances. The string seed should consist of the characters `'*'`
 /// (alive) and `'-'` (dead), representing the state of each cell in the generation.
 ///
-/// The function iterates through each character in the seed string and creates a `Cell`
+/// This function iterates through each character in the seed string and creates a `Cell`
 /// instance for each alive cell (`'*'`), with the appropriate row and column indices based on
 /// the position of the character in the string and the provided number of columns.
 ///
@@ -676,7 +685,7 @@ pub fn generation_from_string(seed: String, columns: u16) -> Result<HashSet<Cell
 /// it into a string representation. The resulting string consists of the characters `'*'`
 /// (alive) and `'-'` (dead), representing the state of each cell in the generation.
 ///
-/// The function iterates through each row and column of the generation grid and appends the
+/// This function iterates through each row and column of the generation grid and appends the
 /// corresponding character (`'*'` or `'-'`) to the output string based on whether a `Cell`
 /// instance exists in the provided `HashSet` for that row and column.
 ///
@@ -701,14 +710,14 @@ pub fn string_from_generation(generation: HashSet<Cell>, rows: u16, columns: u16
     generation_characters.iter().collect()
 }
 
-/// Generates a random seed `String` for the specified number of rows and columns.
+/// Generates a random seed `String` for the specified number of rows and columns with a random alive probability.
 ///
 /// # Description
 /// This function creates a random seed string representing a generation with the given number
-/// of rows and columns.
+/// of rows and columns and a randomly determined probability for a cell to be alive.
 ///
-/// The seed string consists of the characters `'*'` (alive) and `'-'` (dead), with an equal
-/// probability of either character appearing at each position.
+/// The seed string consists of the characters `'*'` (alive) and `'-'` (dead), with the probability
+/// of `'*'` being randomly determined for each call.
 ///
 /// The resulting seed string can be used as input for the `generation_from_string` function to
 /// create a randomly initialized generation.
@@ -723,7 +732,50 @@ pub fn string_from_generation(generation: HashSet<Cell>, rows: u16, columns: u16
 pub fn random_seed(rows: u16, columns: u16) -> String {
     let length: usize = (rows * columns).into();
     let mut rng: ThreadRng = thread_rng();
+    let dist = Uniform::from(0.0..1.0);
+    let alive_probability = dist.sample(&mut rng);
     (0..length)
-        .map(|_| if rng.gen() { ALIVE_CHAR } else { DEAD_CHAR })
+        .map(|_| {
+            if dist.sample(&mut rng) < alive_probability {
+                ALIVE_CHAR
+            } else {
+                DEAD_CHAR
+            }
+        })
+        .collect()
+}
+
+/// Generates a random seed `String` for the specified number of rows and columns with a given alive probability.
+///
+/// # Description
+/// This function creates a random seed string representing a generation with the given number
+/// of rows and columns and a specified probability for a cell to be alive.
+///
+/// The seed string consists of the characters `'*'` (alive) and `'-'` (dead), with the probability
+/// of `'*'` being determined by the `alive_probability` parameter.
+///
+/// The resulting seed string can be used as input for the `generation_from_string` function to
+/// create a randomly initialized generation.
+///
+/// # Arguments
+/// * `rows` - The number of rows in the generation grid.
+/// * `columns` - The number of columns in the generation grid.
+/// * `alive_probability` - The probability of a cell being alive.
+///
+/// # Returns
+/// A `String` representation of a randomly generated generation, where `'*'` represents an alive
+/// cell and `'-'` represents a dead cell.
+pub fn random_seed_probability(rows: u16, columns: u16, alive_probability: f64) -> String {
+    let length: usize = (rows * columns).into();
+    let mut rng: ThreadRng = thread_rng();
+    let dist = Uniform::from(0.0..1.0);
+    (0..length)
+        .map(|_| {
+            if dist.sample(&mut rng) < alive_probability {
+                ALIVE_CHAR
+            } else {
+                DEAD_CHAR
+            }
+        })
         .collect()
 }

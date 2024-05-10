@@ -1,11 +1,11 @@
 [package]
 name = "simple_game_of_life"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Cayman Freeman"]
 description = "A simple Game of Life library built with Rust."
 readme = "README.md"
 repository = "https://github.com/CaymanFreeman/GameOfLife"
-license-file = "LICENSE.txt"
+license = "MIT"
 exclude = ["SDL2.dll", "SDL2_image.dll", ".gitignore"]
 keywords = ["GameOfLife", "game", "of", "life", "conway"]
 edition = "2021"
@@ -13,7 +13,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.3.23"
+rand = "0.8.5"
 simple = "0.3.0"
 
 [lib]

@@ -1,10 +1,12 @@
 # Game of Life
 
-This library assists with creating simple Game of Life simulations. It is based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life), invented by John Conway in 1970.
+This library assists with creating simple Game of Life simulations. It is based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life), invented by John Conway in 1970. The main difference with this library is that there is no infinite plane, but four different finite surfaces defined through the `SurfaceType` enum. This is my first Rust project and picked simulating the Game of Life to learn the language.
 
-The main difference with this library is that there is no infinite plane, but four different finite surfaces defined through the `SurfaceType` enum.
-
-This is my first Rust project and picked simulating the Game of Life to learn the language.
+To use this library, add it to the dependency section to the `Cargo.toml` file for your project as shown below. You can pick a specific version or use '*' for the latest.
+```TOML {id="adding-to-project" data-filename="readme.md"}
+[dependencies]
+simple_game_of_life = "*"
+```
 
 ## Dependencies
 

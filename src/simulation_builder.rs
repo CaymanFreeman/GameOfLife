@@ -311,7 +311,7 @@ impl SimulationBuilder {
     /// configuration settings. It validates the provided parameters and constructs the
     /// simulation accordingly.
     ///
-    /// The function performs the following steps:
+    /// This function performs the following steps:
     ///
     /// 1. Determine the values for `rows`, `columns`, and `seed` based on the provided input.
     /// If any of these values are missing or invalid, an error is returned.

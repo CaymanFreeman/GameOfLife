@@ -1,5 +1,10 @@
-use game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation::{Simulation, SurfaceType};
 use simple_game_of_life::simulation_builder::SimulationBuilder;
+
+// For this example, we want to simulate two simulations
+// to the same point from the same seed but through
+// staggering rollbacks and simulations with A
+// and directly simulating with B.
 
 fn main() {
     // This simulation will be a 5x5 square
@@ -30,8 +35,4 @@ fn main() {
         simulation_a.generation_string(),
         simulation_b.generation_string()
     );
-
-    // Print both generations
-    println!("{}", simulation_a.generation_string());
-    println!("{}", simulation_b.generation_string())
 }

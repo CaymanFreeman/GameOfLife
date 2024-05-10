@@ -179,4 +179,9 @@ impl Simulation {
             sleep(Duration::from_millis(100));
         }
     }
+
+    /// Quits and closes the display window for the simulation.
+    pub fn quit_window(self) {
+        self.window_data.unwrap().window.quit();
+    }
 }
