@@ -2,13 +2,13 @@
 //!
 //! # Example
 //! ```rust,no_run
-//! use simple_game_of_life::simulation::{Simulation, SurfaceType};
+//! use simple_game_of_life::simulation::{Simulation};
 //! use simple_game_of_life::simulation_builder::SimulationBuilder;
 //!
 //! let mut simulation: Simulation = SimulationBuilder::new()
-//!     .rows(4) // 4 rows high
-//!     .columns(9) // 9 columns wide
-//!     .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+//!     .height(4) // 4 rows high
+//!     .width(9) // 9 columns wide
+//!     .surface_rectangle() // Rectangle (non-wrapping) surface
 //!     .print(false) // Declaring that the simulation should not print generations (automatically)
 //!     .display(false) // Declaring that the simulation should not display the generations in a window
 //!     .cell_size(50) // Cell size of 50x50 pixels
@@ -45,7 +45,7 @@ use crate::simulation_window::SimulationWindowData;
 
 /// Represents the surface type of a simulation (how wrapping will behave).
 #[derive(Clone, Debug)]
-pub enum SurfaceType {
+pub(crate) enum SurfaceType {
     /// A spherical surface where cells wrap around on every edge.
     Ball,
     /// A cylindrical surface where cells wrap around horizontally (left/right).
@@ -59,25 +59,25 @@ pub enum SurfaceType {
 /// Represents a simulation of the Game of Life.
 pub struct Simulation {
     /// The initial seed string used to generate the simulation.
-    pub seed: String,
+    pub(crate) seed: String,
     /// The surface type (affects wrapping) of the simulation.
-    pub surface_type: SurfaceType,
+    pub(crate) surface_type: SurfaceType,
     /// The number of rows in the simulation grid.
-    pub rows: u16,
+    pub(crate) rows: u16,
     /// The number of columns in the simulation grid.
-    pub columns: u16,
+    pub(crate) columns: u16,
     /// The current generation of cells in the simulation.
-    pub generation: HashSet<Cell>,
+    pub(crate) generation: HashSet<Cell>,
     /// The current iteration or generation number of the simulation.
-    pub generation_iteration: u128,
+    pub(crate) iteration: u128,
     /// A history of previous generations, used for rolling back the simulation.
-    pub save_history: Vec<HashSet<Cell>>,
+    pub(crate) save_history: Vec<HashSet<Cell>>,
     /// The maximum number of generations to retain in the save history.
-    pub maximum_saves: u128,
+    pub(crate) maximum_saves: u128,
     /// A flag indicating whether the simulation should be displayed in a window.
-    pub display: bool,
+    pub(crate) display: bool,
     /// A flag indicating whether the simulation should be printed to the console.
-    pub print: bool,
+    pub(crate) print: bool,
     /// Data related to the display window for the simulation, if applicable.
     pub(crate) window_data: Option<SimulationWindowData>,
 }
@@ -91,7 +91,7 @@ impl Clone for Simulation {
             rows: self.rows,
             columns: self.columns,
             generation: self.generation.clone(),
-            generation_iteration: self.generation_iteration,
+            iteration: self.iteration,
             save_history: self.save_history.clone(),
             maximum_saves: self.maximum_saves,
             display: self.display,
@@ -117,10 +117,10 @@ impl Display for Simulation {
     /// corresponding character representation (either `'*'` for alive cells or `'-'` for
     /// dead cells) obtained by calling the `as_char` method of the `Cell` struct.
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        if self.generation_iteration == 0 {
+        if self.iteration == 0 {
             write!(f, "SEED\n")?;
         } else {
-            write!(f, "{}\n", self.generation_iteration)?;
+            write!(f, "{}\n", self.iteration)?;
         }
         for row in 0..self.rows {
             for column in 0..self.columns {
@@ -133,6 +133,46 @@ impl Display for Simulation {
 }
 
 impl Simulation {
+    /// Returns the simulation's current generation iteration.
+    pub fn iteration(&mut self) -> u128 {
+        self.iteration
+    }
+
+    /// Returns the simulation's seed.
+    pub fn seed(&mut self) -> String {
+        self.seed.clone()
+    }
+
+    /// Returns the simulation's width in columns.
+    pub fn width(&mut self) -> u16 {
+        self.columns
+    }
+
+    /// Returns the simulation's height in rows.
+    pub fn height(&mut self) -> u16 {
+        self.rows
+    }
+
+    /// Returns the simulation's current generation.
+    pub fn generation(&mut self) -> HashSet<Cell> {
+        self.generation.clone()
+    }
+
+    /// Returns the simulation's save history.
+    pub fn save_history(&mut self) -> Vec<HashSet<Cell>> {
+        self.save_history.clone()
+    }
+
+    /// Returns the simulation's current save history length.
+    pub fn save_history_size(&mut self) -> u128 {
+        self.save_history.len() as u128
+    }
+
+    /// Returns the generation from the specified index of the simulation's save history.
+    pub fn get_save(&mut self, index: u128) -> HashSet<Cell> {
+        self.save_history[index as usize].clone()
+    }
+
     /// Returns the cell at the given row and column.
     ///
     /// # Description
@@ -187,7 +227,7 @@ impl Simulation {
     /// An `u8` value representing the number of alive neighbor cells surrounding the specified
     /// `Cell` instance.
     ///
-    /// #
+    /// # Note
     /// I don't remember how I came up with this function, but it works, and it haunts me.
     fn get_alive_neighbors(&self, cell: Cell) -> u8 {
         let origin_row: u16 = cell.row;
@@ -453,7 +493,7 @@ impl Simulation {
         for _ in 0..iterations {
             if let Some(previous_generation) = self.save_history.pop() {
                 self.generation = previous_generation;
-                self.generation_iteration -= 1;
+                self.iteration -= 1;
             } else {
                 break;
             }
@@ -529,7 +569,7 @@ impl Simulation {
                 row = row + 1;
             }
             self.generation = new_generation;
-            self.generation_iteration += 1;
+            self.iteration += 1;
         }
         if self.display {
             self.draw_generation()
@@ -581,7 +621,7 @@ impl Simulation {
     pub fn reset(&mut self) {
         let seed: String = self.seed.clone();
         self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
-        self.generation_iteration = 0;
+        self.iteration = 0;
     }
 
     /// Resets the simulation to the specified seed.
@@ -591,7 +631,7 @@ impl Simulation {
     pub fn reset_to(&mut self, seed: &str) {
         self.generation = generation_from_string(String::from(seed), self.columns).unwrap();
         self.seed = String::from(seed);
-        self.generation_iteration = 0;
+        self.iteration = 0;
     }
 
     /// Resets the simulation to a random seed.
@@ -603,7 +643,7 @@ impl Simulation {
         let seed: String = random_seed(self.rows, self.columns);
         self.generation = generation_from_string(String::from(seed.clone()), self.columns).unwrap();
         self.seed = seed;
-        self.generation_iteration = 0;
+        self.iteration = 0;
     }
 
     /// Returns true if the simulation is in a still state (a period of 1).

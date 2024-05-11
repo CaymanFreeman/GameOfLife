@@ -1,4 +1,4 @@
-use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation::Simulation;
 use simple_game_of_life::simulation_builder::SimulationBuilder;
 use std::time::Duration;
 
@@ -19,9 +19,9 @@ fn main() {
         // This will increase the length period
         // the .is_finished() function can check for.
         .maximum_saves(10000)
-        .rows(15) // 15 rows high
-        .columns(15) // 15 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(15) // 15 rows high
+        .width(15) // 15 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         .build() // Build into a simulation
         .unwrap();
 
@@ -29,12 +29,12 @@ fn main() {
     for _i in 0..1000 {
         alive_count = simulation.alive_count(); // Set the alive count
         alive_proportion = simulation.alive_proportion(); // Set the alive proportion
-        // Simulate every generation until the simulation is finished
+                                                          // Simulate every generation until the simulation is finished
         simulation.simulate_continuous_generations(Duration::ZERO, true);
         // If this simulation lasted for longer than the current fittest, make it the new fittest
-        if simulation.generation_iteration - 1 > fittest_generations {
-            fittest_generations = simulation.generation_iteration - 1; // Set the new best iteration count (minus the initial seed)
-            fittest_seed = simulation.seed.clone(); // Set the new fittest seed
+        if simulation.iteration() - 1 > fittest_generations {
+            fittest_generations = simulation.iteration() - 1; // Set the new best iteration count (minus the initial seed)
+            fittest_seed = simulation.seed(); // Set the new fittest seed
             println!(
                 "The new fittest seed has lasted for {} generations with an alive proportion of {} ({}/{}):\n{}",
                 fittest_generations, alive_proportion, alive_count, simulation.area(), fittest_seed

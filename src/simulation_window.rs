@@ -153,7 +153,7 @@ impl Simulation {
     ///
     /// This function is called whenever the simulation generation changes to update the
     /// visualization in the display window.
-    pub(crate) fn draw_generation(&mut self) {
+    pub fn draw_generation(&mut self) {
         self.draw_alive_cells();
         self.draw_cell_grid();
         self.window_data.as_mut().unwrap().window.next_frame();

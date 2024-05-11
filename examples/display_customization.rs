@@ -1,4 +1,4 @@
-use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation::Simulation;
 use simple_game_of_life::simulation_builder::SimulationBuilder;
 use std::thread::sleep;
 use std::time::Duration;
@@ -10,9 +10,9 @@ use std::time::Duration;
 fn main() {
     // This simulation will be a 7x7 square with a random seed, will not wrap, and will have a window display
     let mut simulation_red_and_black: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
-        .rows(7) // 7 rows high
-        .columns(7) // 7 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(7) // 7 rows high
+        .width(7) // 7 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         // This simulation will have a random seed since we will not declare one
         .display(true) // Declaring that the simulation should display the generations in a window
         .cell_size(50) // Cell size of 50 pixels
@@ -35,9 +35,9 @@ fn main() {
 
     // This simulation will be a 7x7 square with a random seed, will not wrap, and will have a window display
     let mut simulation_green_and_blue: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
-        .rows(7) // 7 rows high
-        .columns(7) // 7 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(7) // 7 rows high
+        .width(7) // 7 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         // This simulation will have a random seed since we will not declare one
         .display(true) // Declaring that the simulation should display the generations in a window
         .cell_size(50) // Cell size of 50 pixels
@@ -60,9 +60,9 @@ fn main() {
 
     // This simulation will be a 7x7 square with a random seed, will not wrap, and will have a window display
     let mut simulation_stretched: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
-        .rows(7) // 7 rows high
-        .columns(7) // 7 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(7) // 7 rows high
+        .width(7) // 7 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         // This simulation will have a random seed since we will not declare one
         .display(true) // Declaring that the simulation should display the generations in a window
         .cell_width(50) // Cell width of 50 pixels

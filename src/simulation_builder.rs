@@ -2,20 +2,20 @@
 //!
 //! # Example
 //! ```rust,no_run
-//! use simple_game_of_life::simulation::{Simulation, SurfaceType};
+//! use simple_game_of_life::simulation::{Simulation};
 //! use simple_game_of_life::simulation_builder::SimulationBuilder;
 //!
 //! let mut simulation: Simulation = SimulationBuilder::new()
-//!     .rows(4) // 4 rows high
-//!     .columns(9) // 9 columns wide
-//!     .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+//!     .height(4) // 4 rows high
+//!     .width(9) // 9 columns wide
+//!     .surface_rectangle() // Rectangle (non-wrapping) surface
 //!     .display(true) // Declaring that the simulation should display the generations in a window
 //!     .cell_size(50) // Cell size of 50x50 pixels
 //!     .build() // Build into a simulation
 //!     .unwrap();
 //! ```
 
-use crate::simulation::SurfaceType::Rectangle;
+use crate::simulation::SurfaceType::{Ball, HorizontalLoop, Rectangle, VerticalLoop};
 use crate::simulation::{generation_from_string, random_seed, Simulation, SurfaceType};
 use crate::simulation_window::SimulationWindowData;
 use simple::Window;
@@ -275,20 +275,38 @@ impl SimulationBuilder {
     }
 
     /// Sets the number of rows in the simulation.
-    pub fn rows(mut self, rows: u16) -> Self {
+    pub fn height(mut self, rows: u16) -> Self {
         self.rows = Some(rows);
         self
     }
 
     /// Sets the number of columns in the simulation.
-    pub fn columns(mut self, columns: u16) -> Self {
+    pub fn width(mut self, columns: u16) -> Self {
         self.columns = Some(columns);
         self
     }
 
-    /// Sets the surface type (affects wrapping) of the simulation.
-    pub fn surface_type(mut self, surface_type: SurfaceType) -> Self {
-        self.surface_type = surface_type;
+    /// Sets the surface type to Rectangle for the simulation.
+    pub fn surface_rectangle(mut self) -> Self {
+        self.surface_type = Rectangle;
+        self
+    }
+
+    /// Sets the surface type to Ball for the simulation.
+    pub fn surface_ball(mut self) -> Self {
+        self.surface_type = Ball;
+        self
+    }
+
+    /// Sets the surface type to Horizontal Loop for the simulation.
+    pub fn surface_horizontal_loop(mut self) -> Self {
+        self.surface_type = HorizontalLoop;
+        self
+    }
+
+    /// Sets the surface type to Vertical Loop for the simulation.
+    pub fn surface_vertical_loop(mut self) -> Self {
+        self.surface_type = VerticalLoop;
         self
     }
 
@@ -456,7 +474,7 @@ impl SimulationBuilder {
             rows,
             columns,
             generation: generation_from_string(seed, columns).unwrap(),
-            generation_iteration: 0,
+            iteration: 0,
             save_history: Vec::new(),
             maximum_saves: self.maximum_saves,
             display: self.display,

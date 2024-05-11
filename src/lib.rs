@@ -9,13 +9,13 @@
 //!
 //! ```rust,no_run
 //! use std::time::Duration;
-//! use simple_game_of_life::simulation::{Simulation, SurfaceType};
+//! use simple_game_of_life::simulation::{Simulation};
 //! use simple_game_of_life::simulation_builder::SimulationBuilder;
 //!
 //! let mut simulation: Simulation = SimulationBuilder::new()
-//!     .rows(4) // 4 rows high
-//!     .columns(9) // 9 columns wide
-//!     .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+//!     .height(4) // 4 rows high
+//!     .width(9) // 9 columns wide
+//!     .surface_rectangle() // Rectangle (non-wrapping) surface
 //!     .display(true) // Declaring that the simulation should display the generations in a window
 //!     .cell_size(50) // Cell size of 50x50 pixels
 //!     .build() // Build into a simulation

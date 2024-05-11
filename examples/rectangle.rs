@@ -1,4 +1,4 @@
-use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation::Simulation;
 use simple_game_of_life::simulation_builder::SimulationBuilder;
 use std::time::Duration;
 
@@ -8,9 +8,9 @@ use std::time::Duration;
 fn main() {
     // This simulation will be a 15x15 rectangle with a random seed, will not wrap, and will have a window display
     let mut simulation: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
-        .rows(15) // 15 rows high
-        .columns(15) // 15 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(15) // 15 rows high
+        .width(15) // 15 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         // This simulation will have a random seed since we will not declare one
         .display(true) // Declaring that the simulation should display the generations in a window
         .cell_size(50) // Cell size of 50 pixels

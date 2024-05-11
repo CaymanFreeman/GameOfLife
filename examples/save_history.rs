@@ -1,4 +1,4 @@
-use simple_game_of_life::simulation::{Simulation, SurfaceType};
+use simple_game_of_life::simulation::Simulation;
 use simple_game_of_life::simulation_builder::SimulationBuilder;
 
 // For this example, we want to simulate two simulations
@@ -9,9 +9,9 @@ use simple_game_of_life::simulation_builder::SimulationBuilder;
 fn main() {
     // This simulation will be a 5x5 square
     let mut simulation_a: Simulation = SimulationBuilder::new() // Create a new simulation via a builder
-        .rows(5) // 5 rows high
-        .columns(5) // 5 columns wide
-        .surface_type(SurfaceType::Rectangle) // Rectangle (non-wrapping) surface
+        .height(5) // 5 rows high
+        .width(5) // 5 columns wide
+        .surface_rectangle() // Rectangle (non-wrapping) surface
         .seed("-*-***--*--*-*-***-*-*-*-") // Declaring the simulation's initial seed
         .build() // Build into a simulation
         .unwrap();
